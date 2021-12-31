@@ -33,6 +33,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Biosensor Framework">
+      <HintPath>D:\GitHub Repos\Biosensor-Framework\BiosensorFramework\bin\Release\netstandard2.0\Biosensor Framework.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
