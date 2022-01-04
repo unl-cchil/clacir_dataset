@@ -10,13 +10,13 @@ In [Thayer & Stevens (2021)](https://www.apa-hai.org/haib/download-info/effects-
 
 ### Specific aims
 
-1. Assess the predictive accuracy of the machine learning algorithms in classifying HAI exposure
+1. Assess the predictive accuracy of the machine learning algorithms in classifying intervention exposure
 2. Generate an index of physiological stress from Empatica E4 output
 
 ### Research questions
 
-1. How accurately can machine learning algorithms classify HAI exposure?
+1. How accurately can machine learning algorithms classify stress intervention exposure?
 1. Does accuracy differ between stress reduction interventions and stress induction activities?
-1. Which algorithms best predict HAI exposure?
-1. Which features best predict HAI exposure?
+1. Which algorithms best predict stress intervention exposure?
+1. Which features best predict passive and active stress intervention exposures?
 1. Do continuous outcome measures from the algorithms differ across exposure conditions?
