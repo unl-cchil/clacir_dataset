@@ -1,4 +1,4 @@
-# Machine learning classification of stress in human-animal interactions
+# Machine learning classification of stress intervention following cognitive load tasks
 
 This project uses machine learning algorithms to classify stress conditions from Empatica E4 data from Thayer & Stevens (2021).
 
