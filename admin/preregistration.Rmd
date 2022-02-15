@@ -32,11 +32,21 @@ Example: Effect of sugar on brownie tastiness. -->
 
 Example: Though there is strong evidence to suggest that sugar affects taste preferences, the effect has never been demonstrated in brownies. Therefore, we will measure taste preference for four different levels of sugar concentration in a standard brownie recipe to determine if the effect exists in this pastry. -->
 
-In Thayer & Stevens (2021), we conducted two experiments investigating the effects of human-animal interaction (HAI) on affect and cognition. In these experiments, participants experienced cognitive (working memory, attentional control) tasks before and after either a three-minute exposure to a dog (HAI condition) or a control task. Self-report measures of affect (mood, anxiety, stress) were collected repeatedly throughout the sessions. In addition to the affect and cognition measures, participants wore an Empatica E4 to record heart rate (via photoplethysmography), electrodermal activity (EDA), body temperature, and movement (via accelerometer). However, these data were not analyzed for the study, as the sampling rate was too low for robust measures of heart rate variability (Malik et al. 1996, Laborde et al. 2017).
+Overview
 
-Arce & Gehringer (2021) have investigated utilized the Biosensor Framework, a C# library to process and evaluate machine learning algorithms for time-series data from a wrist worn physiological sensor.  This library was validated against the Wearable Stress and Affect Detection (WESAD) dataset (Schmidt et al. 2018), which consists of 15 subjects wearing and ECG sensor, respiratory sensor, and the Empatica E4 during a stress induction task. The data come from a E4 output during baseline, control, and stress induction (using Trier Social Stress Test) phases. Arce & Gehringer (2021) applied machine learning algorithms to the E4 data to predict the participants' psychological state as indexed by the phase of the study.
+In Thayer & Stevens (2021), we conducted two experiments investigating the effects of human-animal interaction (HAI) on affect and cognition. In these experiments, participants experienced cognitive (working memory, attentional control) tasks before and after either a three-minute exposure to a dog (HAI condition) or a control task. Self-report measures of affect (mood, anxiety, stress) were collected repeatedly throughout the sessions. While interacting with a dog influenced measures of affect, they did not influence cognition. In addition to the affect and cognition measures, participants wore an Empatica E4 to record heart rate, electrodermal activity, body temperature, etc. However, we did not analyze these data, as the sampling rate was too low for robust measures of heart rate variability (Malik et al. 1996, Laborde et al. 2017).
 
-Here, we plan to apply the machine learning analysis conducted by Arce & Gehringer (2021) to the Thayer & Stevens (2021) data. This data set has three phases/conditions: pre-intervention cognitive task, intervention (two conditions), post-intervention cognitive task. This generates five possible psychological states: pre-intervention cognitive load, active intervention (HAI condition), passive intervention (control condition), post-active intervention cognitive load, and post-passive intervention cognitive load. The overall design for the current study involves extracting features from the E4 data and using machine learning algorithms to predict the psychological state experience by the participant at the time of the physiological recording.
+Arce & Gehringer (2021) have investigated machine learning algorithms that take Empatica E4 data and classify whether participants were experiencing stress induction. This offers the opportunity to apply the machine learning algorithms developed to classify stress to the Thayer & Stevens (2021) data and address two specific aims:
+
+1. Assess the predictive accuracy of the machine learning algorithms in classifying intervention exposure
+2. Generate an index of physiological stress from Empatica E4 output
+
+Research questions
+
+1. How accurately can machine learning algorithms classify stress intervention exposure? 
+2. Which algorithms best predict stress intervention exposure?
+3. Does the accelerometer data act as a naive feature that gives extra weighting to the different affect states?
+4. Which features best predict passive and active stress intervention exposures?
 
 ## Hypotheses
 <!-- List specific, concise, and testable hypotheses. Please state if the hypotheses are directional or non-directional. If directional, state the direction. A predicted effect is also appropriate here. If a specific interaction or moderation is important to your research, you can list that as a separate hypothesis.
@@ -55,11 +65,11 @@ Psychological state can either be binarized into cognitive load (combine pre-int
 
 3. Accelerometer-based features will best predict binary states.
 
-When the accelerometer features are included in the machine learning algorithm training, the movement associated with the active intervention make them the most important features for classification.  Excluding accelerometer features should improve the performance of the model and improve generalization. **Walker, why do you think that model performance will improve when accelerometer features are removed?**
+When the accelerometer features are included in the machine learning algorithm training, the movement associated with the active intervention will make them the most important features for classification.  Excluding accelerometer features should improve the performance of the model and improve generalization. This is due to the active intervention involving an interaction between subject and a dog, so we expect that the accelerometer features would be more prominent when compared to the passive intervention due to actions like petting.  While this would give the model an easy way to discriminate between the two interventions, it is not our intention to classify based on movement, but rather psychological state.
 
 4. In terms of physiological markers, electrodermal activity-based features will best predict psychological state.
 
-Given an appropriately trained classifier, the higher order features from the electrodermal activity signal should be the best features to predict passive and active stress intervention exposures. **Walker, why do you make this prediction?**
+Given an appropriately trained classifier, the higher order features from the electrodermal activity signal should be the best features to predict passive and active stress intervention exposures.  Considering that electrodermal activity is controlled by the sympathetic nervous system and is particularly sensitive to high arousal states (Schmidt et al., 2018), we would expect those features to correlate to an increase or decrease of cognitive load.
 
 
 
@@ -85,9 +95,9 @@ This question has a variety of possible answers. The key is for a researcher to 
 
 Example: We have a between subjects design with 1 factor (sugar by mass) with 4 levels. -->
 
-The original Thayer and Stevens (2021) was a between-subjects design with two conditions. Participants were randomly assigned to the HAI intervention and control task. 
+Our study is going to utilize the Biosensor Framework, a C# library to process and evaluate machine learning algorithms for time-series data from a wrist worn physiological sensor.  This library was validated against the Wearable Stress and Affect Detection (WESAD) dataset, which consists of 15 subjects wearing and ECG sensor, respiratory sensor, and the Empatica E4.  The analysis in Arce and Gehringer (2021) will be completed for the datasets from Thayer and Stevens (2021), where the data is used to train four regression models, four multi-class models, and two binary models and standard performance metrics are calculated. 
 
-The current study will train four regression models, four multi-class models, and two binary models on the E4 data features to predict which part of the experimental session a participant was in.
+Thayer and Stevens (2021) conducted two studies (n=73, N=73) in which participants first completed a series attentional control and working memory tasks followed by either a brief interaction with a dog or a control task followed by another round of attention and memory tasks. Thus, there are three phases (pre-intervention, intervention, and post-intervention) and two between-subjects groups for the intervention (animal interaction, control task). Participants were randomly assigned to the animal or control intervention. Repeatedly over the experimental session, participants self-reported mood, anxiety, and stress levels. Continuously throughout the session, we recorded electrodermal activity, heart activity, temperature, and movement with an Empatica E4.
 
 
 ## Randomization
@@ -164,8 +174,6 @@ N/A
 
 Example: We manipulated the percentage of sugar by mass added to brownies. The four levels of this categorical variable are: 15%, 20%, 25%, or 40% cane sugar by mass. -->
 
-**Walker, I don't think that there are any manipulated variables in this study. The manipulated variable in the original study was the active vs. passive intervention.**
-
 In the original Thayer & Stevens (2021) study, the manipulated variable was the interaction type: active (HAI condition) or passive (control condition).
 
 The current analysis has no manipulated variables.
@@ -179,23 +187,15 @@ Observational studies and meta-analyses will include only measured variables. As
 
 Example: The single outcome variable will be the perceived tastiness of the single brownie each participant will eat. We will measure this by asking participants ‘How much did you enjoy eating the brownie’ (on a scale of 1-7, 1 being 'not at all', 7 being 'a great deal') and 'How good did the brownie taste' (on a scale of 1-7, 1 being 'very bad', 7 being 'very good'). -->
 
-**Walker, I would start by describing the E4 raw data here (EDA, PPG, ACC, TEMP).**
-Raw data
+The Empatica E4 is a wrist worn biosensor that outputs four continuous data streams: electrodermal activity, photoplethysmography, accelerometry (x, y, z), and temperature.  The electrodermal activity is measured by sensing the resistance of the skin on the ventral side of the wrist.  The photoplethysmography is an analogue to an electrocardiogram (ECG) and is measured by sensing the volumetric change in blood in peripheral circulation on the top of the wrist, which also acts as an implicit measure of heart activity.  The accelerometry is captured using a 3-axis accelerometer on the back of the wrist which senses the change in acceleration at a point.  The temperature data is captured using a thermopile on the top of the wrist and measures temperature in Celsius.
 
+We are classifying five different states: cognitive load before intervention, active intervention, passive intervention, and cognitive load after intervention.
 
-Predictors
-**Walker, we need to sort out how many states will be in our analyses. Will we only do these three or will we also do all five?**
-We are classifying three different states: cognitive load, active intervention, and passive intervention.
-
-Cognitive load is a state where the subject is performing cognitive tasks that require work to complete, thereby increasing the amount of attention and energy expended during the task (pre-intervention and post-intervention phases). 
+Cognitive load is a state where the subject is performing cognitive tasks that require work to complete, thereby increasing the amount of attention and energy expended during the task (pre-intervention and post-intervention phases).  We treat both cognitive load states as onset conditions where we expect markers of stress to correspond to psychological state.
 
 Active intervention is a state where there is a presupposed positive stimulus, in this case a dog, that is allowed to interact with the subject to reduce the effects of cognitive load.  This intervention is randomly selected for the subjects.
 
 Passive intervention is a state where there is no presupposed positive stimulus, in this case no dog, that interacts with the subject.  This intervention is also randomly selected for the subjects.
-
-**Walker, somewhere here we need to clarify what the rows/observations/instances are. That is, how do we collapse the continuous monitoring into a row?**
-
-**Walker, since you have the performance measures in the analysis plan, I have removed them from here.**
 
 
 ## Indices
@@ -205,8 +205,13 @@ If you are using multiple pieces of data to construct a single variable, how wil
 
 Example: We will take the mean of the two questions above to create a single measure of 'brownie enjoyment.'  -->
 
-**Walker, I think this is where you should describe how you created all of the features from the raw E4 data.**
+The features derived from the raw data consist of statistical and frequency response features.  The Biosensor Framework converts the raw data streams into 119 feature vectors.  Each axis of the accelerometry produces 4 features, with the 3-axis raw data being used to produce 4 more. The electrodermal activity produces 15 features.  The photoplethysmography produces 18 features.  Finally, the temperature produces 6 features. 
 
+These features are generated in 5 second windows.  So these 119 features will be calculated for each 5 second chunk and the final collection of vectors is the condensed dataset for the subject.  These features consist of the maximum and minimum of the raw data, the standard deviation of the raw data, the absolute value of the area under the curve for the integral of the signal, the peak frequency of the signal using a Fast Fourier transform, the root mean square of the signal, the dynamic range of the signal, and the slope of the signal.  
+
+To process the photoplethymography signal, the first derivative is estimated using the finite difference method and the local maxima are found.  Using the maxima and the sampling rate (64 Hz), the heart rate, RR intervals, NN50, and pNN50 are calculated.  Additionally, the raw data is used to calculate the frequency band energies, which are used to calculate the frequency ratio, normalized to find the mean, and used to find the signal frequency power.  
+
+To process the electrodermal activity, the phasic (SCR) and tonic (SCL) components are found by removing the trend using the Tarvainen method and finding the residual by subtracting the SCR from the raw signal.  The raw signal is also used to find the magnitude, duration, and amplitude of the various peaks within the signal using the Healey method.  
 
 # Analysis Plan
 <!-- You may describe one or more confirmatory analysis in this preregistration. Please remember that all analyses specified below must be reported in the final article, and any additional analyses must be noted as exploratory or hypothesis generating.
@@ -224,16 +229,23 @@ This is perhaps the most important and most complicated question within the prer
 
 Example:  We will use a one-way between subjects ANOVA to analyze our results. The manipulated, categorical independent variable is 'sugar' whereas the dependent variable is our taste index. -->
 
-**Walker, I think we need more details about training/testing sets and how they are fed into the models, as well as a description of the models.**
+The raw data will be split using a 70/30 split, so 70% of the data will be used to train and 30% will be used to evaluate the performance of the models.  The evaluation dataset will be used to generate our summary statistics on model performance, which allows the model to be evaluated using data that it has not seen.  During the evaluation phase, the model will not be training (i.e. updating weights), so it will not get better or worse as it evaluates.
 
-Performance metrics
-Each multi-class model will be evaluated using their log loss, log loss reduction, macro accuracy, micro accuracy, and class precision, recall, and loss.
+The models built into Microsoft.ML will be used.  One of the constraints with Microsoft.ML at the time of creating the Biosensor Framework was that many models were still in development and some had bugs that made them inoperable.  Due to this, the Biosensor Framework excluded them.  This study will reevaluate the models used and add in models that are working.  The current benchmarking models in the Biosensor Framework are explained below.
 
-Each regression model will be evaluated using mean absolute error, mean squared error, root mean square error, and r-squared.
+The multi-class models consist of: Averaged Perceptron, Fast Forest, Fast Tree, LBFGS Logistic Regression, LBFGS Maximum Entropy, Light GBM, Linear SVM, SDCA Maximum Entropy, SGD Calibrated, and K Means.  Each multi-class model will be evaluated using their log loss, log loss reduction, macro accuracy, micro accuracy, and class precision, recall, and loss.
 
-Each binary model will be evaluated using accuracy, area under the precision-recall curve, area under ROC curve, F1 score, negative precision and recall, and positive precision and recall.
+The regression models consist of: Fast Forest, Fast Tree, Fast Tree Tweedie, LBFGS Poisson Regression, and Light GBM.  Each regression model will be evaluated using mean absolute error, mean squared error, root mean square error, and r-squared.
+
+The binary models consist of: Fast Forest and Fast Tree.  Each binary model will be evaluated using accuracy, area under the precision-recall curve, area under ROC curve, F1 score, negative precision and recall, and positive precision and recall.
 
 The feature importance will be evaluated using permutation feature importance.
+
+For all available regression models in the ML.NET API: https://docs.microsoft.com/en-us/dotnet/api/microsoft.ml.regressioncatalog.regressiontrainers?view=ml-dotnet
+
+For all available multi-class models in the ML.NET API: https://docs.microsoft.com/en-us/dotnet/api/microsoft.ml.multiclassclassificationcatalog.multiclassclassificationtrainers?view=ml-dotnet
+
+For all available binary models in the ML.NET API: https://docs.microsoft.com/en-us/dotnet/api/microsoft.ml.binaryclassificationcatalog.binaryclassificationtrainers?view=ml-dotnet
 
 
 ## Transformations
@@ -241,8 +253,7 @@ The feature importance will be evaluated using permutation feature importance.
 
 Example: The "Effect of sugar on brownie tastiness" does not require any additional transformations. However, if it were using a regression analysis and each level of sweet had been categorically described (e.g. not sweet, somewhat sweet, sweet, and very sweet), 'sweet' could be dummy coded with 'not sweet' as the reference category. -->
 
-**Walker, any transformations of the data, or do you use the raw feature data?**
-
+Once the raw data has been converted to feature vectors, they are used as-is for training, testing, and validation.
 
 ## Inference criteria
 <!-- What criteria will you use to make inferences? Please describe the information youÍll use (e.g. p-values, bayes factors, specific model fit indices), as well as cut-off criterion, where appropriate. Will you be using one or two tailed tests for each of your analyses? If you are comparing multiple conditions or testing multiple hypotheses, will you account for this?
@@ -251,14 +262,16 @@ p-values, confidence intervals, and effect sizes are standard means for making a
 
 Example: We will use the standard p<.05 criteria for determining if the ANOVA and the post hoc test suggest that the results are significantly different from those expected if the null hypothesis were correct. The post-hoc Tukey-Kramer test adjusts for multiple comparisons. -->
 
-**Walker, we need to think about this. My preference is to use Bayes factors to compare models.**
+We will use Bayes factors for comparing which algorithms have the highest accuracy. We will use the thresholds from Wagenmakers et al. (2018), with Bayes factors > 3 indicating moderate evidence for the highest performing model compared to the next model.
+
+**Walker, will we get accuracy/importance measures with multiple repetitions for each algorithm and feature (if that makes sense)? That is, will we be able to compare a distribution of accuracies for one algorithm to a distribution for another algorithm? Or will we just get a single accuracy for each algorithm? Same for feature importance.**
 
 ## Data exclusion
 <!-- How will you determine what data or samples, if any, to exclude from your analyses? How will outliers be handled? Will you use any awareness check? Any rule for excluding a particular set of data is acceptable. One may describe rules for excluding a participant or for identifying outlier data.
 
 Example: No checks will be performed to determine eligibility for inclusion besides verification that each subject answered each of the three tastiness indices. Outliers will be included in the analysis. -->
 
-**Walker, did you have any outliers in the previous analysis?**
+No outliers are expected.
 
 
 ## Missing data
@@ -266,7 +279,7 @@ Example: No checks will be performed to determine eligibility for inclusion besi
 
 Example: If a subject does not complete any of the three indices of tastiness, that subject will not be included in the analysis. -->
 
-**Walker, have you checked for missing data?**
+Any missing or incomplete data will be excluded from the dataset in the processing step.
 
 
 ## Exploratory analyses (optional)
