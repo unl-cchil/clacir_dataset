@@ -8,20 +8,20 @@ using MMIVR.BiosensorFramework.Extensions;
 using MMIVR.BiosensorFramework.InputPipeline;
 using MMIVR.BiosensorFramework.MachineLearningUtilities;
 
-// 1. Get the synchronized start time of datafiles
-// 2. Convert the tags file to 0-4 labels and label data
-// 3. ???
-// 4. Profit
+
 namespace hai_stress_experiments
 { 
     class Program
     {
+        static string[] ExpFiles = { 
+            @"C:\GitHub\hai_stress\data\raw_data\hr_data_times1.csv", 
+            @"C:\GitHub\hai_stress\data\raw_data\hr_data_times2.csv" };
+        static string TopDir = @"C:\GitHub\hai_stress\data\raw_data";
         static int WindowSize = 5;
         enum E4Data { ACC, BVP, EDA, HR, IBI, TAGS, TEMP }
         static void Main(string[] args)
         {
-            string TopDir = @"C:\GitHub\hai_stress\data\raw_data";
-            ArceStevensDatasetPipeline(TopDir);
+            List<ExtractedMultiFeatures> Dataset = ArceStevensDataset(TopDir);
         }
         
         public static List<Tuple<string, string>> GetSubjectConditions(string[] ExpFiles)
@@ -46,7 +46,7 @@ namespace hai_stress_experiments
         }
 
         public static List<int> GetEventIndices(Tuple<string, List<double[]>, List<string>, List<double[]>> Subject, string SubjectCondition, 
-            int WindowSize, int WindowCount)
+            int WindowCount)
         {
             int[] SampleRates = { 96, 32, 32, 32, 64, 4, 4 };
             List<string> DataStarts = Subject.Item3;
@@ -112,9 +112,8 @@ namespace hai_stress_experiments
         /// 
         /// </summary>
         /// <param name="Directories"></param>
-        public static void ArceStevensDatasetPipeline(string Directory)
+        public static List<ExtractedMultiFeatures> ArceStevensDataset(string Directory)
         {
-            string[] ExpFiles = { @"C:\GitHub\hai_stress\data\raw_data\hr_data_times1.csv", @"C:\GitHub\hai_stress\data\raw_data\hr_data_times2.csv" };
             List<Tuple<string, string>> SubjectConditions = GetSubjectConditions(ExpFiles);
             List<ExtractedMultiFeatures> MultiFeatureSet = new List<ExtractedMultiFeatures>();
             List<Tuple<string, List<double[]>, List<string>, List<double[]>>> Datasets = LoadE4Dataset(Directory);
@@ -124,7 +123,7 @@ namespace hai_stress_experiments
                 {
                     Tuple<string, string> SubjectCondition = SubjectConditions.Find(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1));
                     int NumberOfSamples = Dataset.Item2[1].Length / 32;
-                    List<int> EventIndices = GetEventIndices(Dataset, SubjectCondition.Item2, WindowSize, NumberOfSamples);
+                    List<int> EventIndices = GetEventIndices(Dataset, SubjectCondition.Item2, NumberOfSamples);
                     for (int i = 0; i < NumberOfSamples - WindowSize; i += WindowSize)
                     {
                         List<double> SubjectFeatures = new List<double>();
@@ -154,6 +153,7 @@ namespace hai_stress_experiments
                     }
                 }
             }
+            return MultiFeatureSet;
         }
 
         /// <summary>
