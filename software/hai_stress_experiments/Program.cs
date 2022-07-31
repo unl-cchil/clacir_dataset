@@ -23,7 +23,55 @@ namespace hai_stress_experiments
         {
             List<ExtractedMultiFeatures> Dataset = ArceStevensDataset(TopDir);
         }
-        
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="Directories"></param>
+        public static List<ExtractedMultiFeatures> ArceStevensDataset(string Directory)
+        {
+            List<Tuple<string, string>> SubjectConditions = GetSubjectConditions(ExpFiles);
+            List<ExtractedMultiFeatures> MultiFeatureSet = new List<ExtractedMultiFeatures>();
+            List<Tuple<string, List<double[]>, List<string>, List<double[]>>> Datasets = LoadE4Dataset(Directory);
+            foreach (var Dataset in Datasets)
+            {
+                if (SubjectConditions.Exists(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1)))
+                {
+                    Tuple<string, string> SubjectCondition = SubjectConditions.Find(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1));
+                    int NumberOfSamples = Dataset.Item2[1].Length / 32;
+                    List<int> EventIndices = GetEventIndices(Dataset, SubjectCondition.Item2, NumberOfSamples);
+                    for (int i = 0; i < NumberOfSamples - WindowSize; i += WindowSize)
+                    {
+                        List<double> SubjectFeatures = new List<double>();
+                        for (int j = 0; j < WindowSize; j++)
+                        {
+                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[0].GetSubArray(j * 96, (j + 1) * 96)));
+                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[1].GetSubArray(j * 32, (j + 1) * 32)));
+                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[2].GetSubArray(j * 32, (j + 1) * 32)));
+                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[3].GetSubArray(j * 32, (j + 1) * 32)));
+                        }
+                        SubjectFeatures.AddRange(SignalProcessing.ProcessPpgSignal(Dataset.Item2[4].GetSubArray(i * 64, (i + WindowSize) * 64)));
+                        SubjectFeatures.AddRange(SignalProcessing.ProcessEdaSignal(Dataset.Item2[5].GetSubArray(i * 4, (i + WindowSize) * 4)));
+                        SubjectFeatures.AddRange(SignalProcessing.ProcessTmpSignal(Dataset.Item2[6].GetSubArray(i * 4, (i + WindowSize) * 4)));
+
+                        uint label = (uint)EventIndices[i / 5];
+
+                        MultiFeatureSet.Add(new ExtractedMultiFeatures()
+                        {
+                            StressFeatures = SubjectFeatures.ToArray().ToFloat(),
+                            Result = label,
+                        });
+
+                        if (i + WindowSize > NumberOfSamples)
+                        {
+                            WindowSize = NumberOfSamples - i;
+                        }
+                    }
+                }
+            }
+            return MultiFeatureSet;
+        }
+
         public static List<Tuple<string, string>> GetSubjectConditions(string[] ExpFiles)
         {
             List<Tuple<string, string>> SubjectConditions = new List<Tuple<string, string>>();
@@ -106,54 +154,6 @@ namespace hai_stress_experiments
                 }
             }
             return Labels;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="Directories"></param>
-        public static List<ExtractedMultiFeatures> ArceStevensDataset(string Directory)
-        {
-            List<Tuple<string, string>> SubjectConditions = GetSubjectConditions(ExpFiles);
-            List<ExtractedMultiFeatures> MultiFeatureSet = new List<ExtractedMultiFeatures>();
-            List<Tuple<string, List<double[]>, List<string>, List<double[]>>> Datasets = LoadE4Dataset(Directory);
-            foreach (var Dataset in Datasets)
-            {
-                if (SubjectConditions.Exists(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1)))
-                {
-                    Tuple<string, string> SubjectCondition = SubjectConditions.Find(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1));
-                    int NumberOfSamples = Dataset.Item2[1].Length / 32;
-                    List<int> EventIndices = GetEventIndices(Dataset, SubjectCondition.Item2, NumberOfSamples);
-                    for (int i = 0; i < NumberOfSamples - WindowSize; i += WindowSize)
-                    {
-                        List<double> SubjectFeatures = new List<double>();
-                        for (int j = 0; j < WindowSize; j++)
-                        {
-                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[0].GetSubArray(j * 96, (j + 1) * 96)));
-                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[1].GetSubArray(j * 32, (j + 1) * 32)));
-                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[2].GetSubArray(j * 32, (j + 1) * 32)));
-                            SubjectFeatures.AddRange(SignalProcessing.ProcessAccSignal(Dataset.Item2[3].GetSubArray(j * 32, (j + 1) * 32)));
-                        }
-                        SubjectFeatures.AddRange(SignalProcessing.ProcessPpgSignal(Dataset.Item2[4].GetSubArray(i * 64, (i + WindowSize) * 64)));
-                        SubjectFeatures.AddRange(SignalProcessing.ProcessEdaSignal(Dataset.Item2[5].GetSubArray(i * 4, (i + WindowSize) * 4)));
-                        SubjectFeatures.AddRange(SignalProcessing.ProcessTmpSignal(Dataset.Item2[6].GetSubArray(i * 4, (i + WindowSize) * 4)));
-
-                        uint label = (uint)EventIndices[i / 5];
-
-                        MultiFeatureSet.Add(new ExtractedMultiFeatures()
-                        {
-                            StressFeatures = SubjectFeatures.ToArray().ToFloat(),
-                            Result = label,
-                        });
-
-                        if (i + WindowSize > NumberOfSamples)
-                        {
-                            WindowSize = NumberOfSamples - i;
-                        }
-                    }
-                }
-            }
-            return MultiFeatureSet;
         }
 
         /// <summary>
