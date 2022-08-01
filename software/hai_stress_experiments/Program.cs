@@ -159,7 +159,7 @@ namespace hai_stress_experiments
                         SubjectFeatures.AddRange(SignalProcessing.ProcessEdaSignal(Dataset.Item2[5].GetSubArray(i * 4, (i + WindowSize) * 4)));
                         SubjectFeatures.AddRange(SignalProcessing.ProcessTmpSignal(Dataset.Item2[6].GetSubArray(i * 4, (i + WindowSize) * 4)));
 
-                        uint label = (uint)EventIndices[i / 5];
+                        uint label = (uint)EventIndices[i];
 
                         MultiFeatureSet.Add(new ExtractedMultiFeatures()
                         {
