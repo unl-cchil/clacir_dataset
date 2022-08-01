@@ -4,31 +4,128 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.ML;
+using Microsoft.ML.Data;
 using MMIVR.BiosensorFramework.Extensions;
 using MMIVR.BiosensorFramework.InputPipeline;
 using MMIVR.BiosensorFramework.MachineLearningUtilities;
-
+using static Microsoft.ML.DataOperationsCatalog;
 
 namespace hai_stress_experiments
 { 
     class Program
     {
+        static string ModelDir = "";
+        static ITransformer BestRegModel;
+        static ITransformer BestMultiModel;
+        static ITransformer BestBinModel;
         static string[] ExpFiles = { 
             @"C:\GitHub\hai_stress\data\raw_data\hr_data_times1.csv", 
             @"C:\GitHub\hai_stress\data\raw_data\hr_data_times2.csv" };
         static string TopDir = @"C:\GitHub\hai_stress\data\raw_data";
         static int WindowSize = 5;
+        static int[] SampleRates = { 96, 32, 32, 32, 64, 4, 4 };
         enum E4Data { ACC, BVP, EDA, HR, IBI, TAGS, TEMP }
+
         static void Main(string[] args)
         {
-            List<ExtractedMultiFeatures> Dataset = ArceStevensDataset(TopDir);
+            MLContext mlContext = new MLContext();
+            ArceStevensDataset(TopDir, mlContext,
+                out TrainTestData MultiClass, out TrainTestData BinClass, out TrainTestData RegClass, 0.3);
+
+            List<ITransformer> RegMultiModels = Train.BuildAndTrainRegressionModels(mlContext, RegClass.TrainSet);
+            List<ITransformer> BinModels = Train.BuildAndTrainBinClassModels(mlContext, BinClass.TrainSet);
+            List<ITransformer> MultiModels = Train.BuildAndTrainMultiClassModels(mlContext, MultiClass.TrainSet);
+
+            double RegRSquared = 0;
+            double BinAccuracy = 0;
+            double MultiLogLoss = 1.0;
+
+            BestRegModel = null;
+            BestMultiModel = null;
+            BestBinModel = null;
+
+            DataViewSchema RegModelSchema = null;
+            DataViewSchema MultiModelSchema = null;
+            DataViewSchema BinModelSchema = null;
+
+            Console.WriteLine("\nRegression Model Metrics");
+            foreach (var model in RegMultiModels)
+            {
+                try
+                {
+                    IDataView testPred = model.Transform(RegClass.TestSet);
+                    RegressionMetrics modelMetrics = mlContext.Regression.Evaluate(testPred);
+                    Train.PrintRegMetrics(modelMetrics);
+                    if (modelMetrics.RSquared > RegRSquared)
+                    {
+                        RegModelSchema = testPred.Schema;
+                        RegRSquared = modelMetrics.RSquared;
+                        BestRegModel = model;
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            Console.WriteLine("\nBinary Classification Model Metrics");
+            foreach (var model in BinModels)
+            {
+                try
+                {
+                    IDataView testpred = model.Transform(BinClass.TestSet);
+                    BinaryClassificationMetrics BinMetrics = mlContext.BinaryClassification.EvaluateNonCalibrated(testpred);
+                    Train.PrintBinMetrics(BinMetrics);
+                    if (BinMetrics.Accuracy > BinAccuracy)
+                    {
+                        BinModelSchema = testpred.Schema;
+                        BinAccuracy = BinMetrics.Accuracy;
+                        BestBinModel = model;
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            Console.WriteLine("\nMulti-Class Classification Model Metrics");
+            foreach (var model in MultiModels)
+            {
+                try
+                {
+                    IDataView testpred = model.Transform(MultiClass.TestSet);
+                    MulticlassClassificationMetrics MultiMetrics = mlContext.MulticlassClassification.Evaluate(testpred);
+                    Train.PrintMultiMetrics(MultiMetrics);
+                    if (MultiMetrics.LogLoss < MultiLogLoss)
+                    {
+                        MultiModelSchema = testpred.Schema;
+                        MultiLogLoss = MultiMetrics.LogLoss;
+                        BestMultiModel = model;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    continue;
+                }
+            }
+            if (ModelDir != null)
+            {
+                mlContext.Model.Save(BestMultiModel, MultiModelSchema, Path.Combine(ModelDir, "MultiModel.zip"));
+                mlContext.Model.Save(BestBinModel, BinModelSchema, Path.Combine(ModelDir, "BinModel.zip"));
+                mlContext.Model.Save(BestRegModel, RegModelSchema, Path.Combine(ModelDir, "RegModel.zip"));
+            }
+            Console.ReadLine();
         }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="Directories"></param>
-        public static List<ExtractedMultiFeatures> ArceStevensDataset(string Directory)
+        public static void ArceStevensDataset(string Directory, MLContext mlContext, out TrainTestData MultiClass, out TrainTestData BinClass, out TrainTestData RegClass, double TrainTestRatio = 0.1)
         {
             List<Tuple<string, string>> SubjectConditions = GetSubjectConditions(ExpFiles);
             List<ExtractedMultiFeatures> MultiFeatureSet = new List<ExtractedMultiFeatures>();
@@ -38,7 +135,15 @@ namespace hai_stress_experiments
                 if (SubjectConditions.Exists(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1)))
                 {
                     Tuple<string, string> SubjectCondition = SubjectConditions.Find(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1));
-                    int NumberOfSamples = Dataset.Item2[1].Length / 32;
+                    int ShortestData = 1;
+                    for (int i = 0; i < Dataset.Item2.Count; i++)
+                    {
+                        if (Dataset.Item2[i].Length / SampleRates[i] < Dataset.Item2[ShortestData].Length / SampleRates[i])
+                        {
+                            ShortestData = i;
+                        }
+                    }
+                    int NumberOfSamples = Dataset.Item2[ShortestData].Length / SampleRates[ShortestData];
                     List<int> EventIndices = GetEventIndices(Dataset, SubjectCondition.Item2, NumberOfSamples);
                     for (int i = 0; i < NumberOfSamples - WindowSize; i += WindowSize)
                     {
@@ -69,7 +174,15 @@ namespace hai_stress_experiments
                     }
                 }
             }
-            return MultiFeatureSet;
+            MultiFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 0 });
+            List<ExtractedBinFeatures> BinFeatureSet = MultiToBin(MultiFeatureSet);
+            List<ExtractedRegFeatures> RegFeatureSet = MultiToReg(MultiFeatureSet);
+            IDataView MultiClassView = mlContext.Data.LoadFromEnumerable(MultiFeatureSet);
+            IDataView BinClassView = mlContext.Data.LoadFromEnumerable(BinFeatureSet);
+            IDataView RegClassView = mlContext.Data.LoadFromEnumerable(RegFeatureSet);
+            MultiClass = mlContext.Data.TrainTestSplit(MultiClassView, TrainTestRatio);
+            BinClass = mlContext.Data.TrainTestSplit(BinClassView, TrainTestRatio);
+            RegClass = mlContext.Data.TrainTestSplit(RegClassView, TrainTestRatio);
         }
 
         public static List<Tuple<string, string>> GetSubjectConditions(string[] ExpFiles)
@@ -96,7 +209,6 @@ namespace hai_stress_experiments
         public static List<int> GetEventIndices(Tuple<string, List<double[]>, List<string>, List<double[]>> Subject, string SubjectCondition, 
             int WindowCount)
         {
-            int[] SampleRates = { 96, 32, 32, 32, 64, 4, 4 };
             List<string> DataStarts = Subject.Item3;
             List<double[]> Tags = Subject.Item4;
             List<int[]> TagIndices = new List<int[]>();
@@ -176,6 +288,10 @@ namespace hai_stress_experiments
                     List<double> LabelIndices = new List<double>();
                     string FolderName = Path.GetFileName(dir);
                     string[] files = Directory.GetFiles(dir, "*.csv").OrderBy(f => f).ToArray();
+                    if (files.Length != 7)
+                    {
+                        continue;
+                    }
                     foreach (string file in files)
                     {
                         if (Path.GetFileNameWithoutExtension(file) == "ACC")
@@ -275,6 +391,50 @@ namespace hai_stress_experiments
                 }
             }
             return Tuple.Create(Date, ExtractedData.ToArray());
+        }
+
+        /// <summary>
+        /// Converts multi-class feature set to binary class representation.
+        /// </summary>
+        /// <param name="FeatureSet">The feature set to convert.</param>
+        /// <returns>Binary class representation of the input data.</returns>
+        public static List<ExtractedBinFeatures> MultiToBin(List<ExtractedMultiFeatures> FeatureSet)
+        {
+            List<ExtractedBinFeatures> ConFeatures = new List<ExtractedBinFeatures>();
+            for (int i = 0; i < FeatureSet.Count; i++)
+            {
+                if (FeatureSet[i].Result == 1 || FeatureSet[i].Result == 4)
+                    ConFeatures.Add(new ExtractedBinFeatures()
+                    {
+                        Label = false,
+                        Features = FeatureSet[i].StressFeatures
+                    });
+                else
+                    ConFeatures.Add(new ExtractedBinFeatures()
+                    {
+                        Label = true,
+                        Features = FeatureSet[i].StressFeatures,
+                    });
+            }
+            return ConFeatures;
+        }
+        /// <summary>
+        /// Converts multi-class feature dataset to regression class feature dataset.
+        /// </summary>
+        /// <param name="FeatureSet">the feature set to convert.</param>
+        /// <returns>Regression class representation of the input data.</returns>
+        public static List<ExtractedRegFeatures> MultiToReg(List<ExtractedMultiFeatures> FeatureSet)
+        {
+            List<ExtractedRegFeatures> ConFeatures = new List<ExtractedRegFeatures>();
+            for (int i = 0; i < FeatureSet.Count; i++)
+            {
+                ConFeatures.Add(new ExtractedRegFeatures()
+                {
+                    Result = FeatureSet[i].Result,
+                    StressFeatures = FeatureSet[i].StressFeatures,
+                });
+            }
+            return ConFeatures;
         }
     }
 }
