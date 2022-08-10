@@ -24,18 +24,37 @@ namespace hai_stress_experiments
             @"C:\GitHub\hai_stress\data\raw_data\hr_data_times2.csv" };
         static string TopDir = @"C:\GitHub\hai_stress\data\raw_data";
         static int WindowSize = 5;
+        static double TrainTestRatio = 0.3;
         static int[] SampleRates = { 96, 32, 32, 32, 64, 4, 4 };
         enum E4Data { ACC, BVP, EDA, HR, IBI, TAGS, TEMP }
+        static Random rnd = new Random();
 
         static void Main(string[] args)
         {
             MLContext mlContext = new MLContext();
-            ArceStevensDataset(TopDir, mlContext,
-                out TrainTestData MultiClass, out TrainTestData BinClass, out TrainTestData RegClass, 0.3);
+            List<ExtractedMultiFeatures> MultiFeatureSet = ArceStevensDataset(TopDir);
+            
+            MultiFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 0 });
+            MultiFeatureSet = MultiFeatureSet.OrderBy(item => rnd.Next()).ToList();
 
-            List<ITransformer> RegMultiModels = Train.BuildAndTrainRegressionModels(mlContext, RegClass.TrainSet);
-            List<ITransformer> BinModels = Train.BuildAndTrainBinClassModels(mlContext, BinClass.TrainSet);
-            List<ITransformer> MultiModels = Train.BuildAndTrainMultiClassModels(mlContext, MultiClass.TrainSet);
+            var CognitiveLoadSet = CombineLabels(MultiFeatureSet, new List<int>() { 2, 3 }, 0);
+            CognitiveLoadSet = CombineLabels(CognitiveLoadSet, new List<int> { 1, 4 }, 1);
+            
+            //var HAIFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 1, 4 });
+            List<ExtractedBinFeatures> BinFeatureSet = MultiToBin(CognitiveLoadSet);
+            List<ExtractedRegFeatures> RegFeatureSet = MultiToReg(CognitiveLoadSet);
+
+            IDataView MultiClassView = mlContext.Data.LoadFromEnumerable(MultiFeatureSet);
+            IDataView BinClassView = mlContext.Data.LoadFromEnumerable(BinFeatureSet);
+            IDataView RegClassView = mlContext.Data.LoadFromEnumerable(RegFeatureSet);
+
+            TrainTestData MultiClass = mlContext.Data.TrainTestSplit(MultiClassView, TrainTestRatio);
+            TrainTestData BinClass = mlContext.Data.TrainTestSplit(BinClassView, TrainTestRatio);
+            TrainTestData RegClass = mlContext.Data.TrainTestSplit(RegClassView, TrainTestRatio);
+
+            List<ITransformer> RegMultiModels = BuildAndTrainRegressionModels(mlContext, RegClass.TrainSet);
+            List<ITransformer> BinModels = BuildAndTrainBinClassModels(mlContext, BinClass.TrainSet);
+            List<ITransformer> MultiModels = BuildAndTrainMultiClassModels(mlContext, MultiClass.TrainSet);
 
             double RegRSquared = 0;
             double BinAccuracy = 0;
@@ -120,12 +139,133 @@ namespace hai_stress_experiments
             }
             Console.ReadLine();
         }
+        /// <summary>
+        /// Trains multi-class models built-in to Microsoft.ML on the TrainingSet provided.
+        /// </summary>
+        /// <param name="mlContext">The Microsoft.ML context to perform operations in.</param>
+        /// <param name="TrainingSet">The time-series dataset to train the models on.</param>
+        /// <returns>List of models that can be used in performance benchmarks.</returns>
+        public static List<ITransformer> BuildAndTrainMultiClassModels(MLContext mlContext, IDataView TrainingSet)
+        {
+            List<ITransformer> Models = new List<ITransformer>();
+            var Pipeline = mlContext.Transforms.Conversion.MapValueToKey(nameof(ExtractedMultiFeatures.Result))
+                .Append(mlContext.Transforms.CopyColumns("Label", "Result"))
+                .Append(mlContext.Transforms.Concatenate("Features", "StressFeatures"));
 
+            var APOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.AveragedPerceptron()));
+            var FFOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.FastForest()));
+            var FTOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.FastTree()));
+            var LBFGSPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.LbfgsLogisticRegression()));
+            var LBFGSMEPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.LbfgsMaximumEntropy());
+            var LGBMPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.LightGbm());
+            var LSVMOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.LinearSvm()));
+            var SdcaPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.SdcaMaximumEntropy());
+            var SGDCOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.SgdCalibrated()));
+            //var SSGDLROPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.SymbolicSgdLogisticRegression()));
+            var KPipeline = Pipeline.Append(mlContext.Clustering.Trainers.KMeans(numberOfClusters: 9));
+
+            Models.Add(APOPipeline.Fit(TrainingSet));
+            Models.Add(FFOPipeline.Fit(TrainingSet));
+            Models.Add(FTOPipeline.Fit(TrainingSet));
+            Models.Add(LBFGSPipeline.Fit(TrainingSet));
+            Models.Add(LBFGSMEPipeline.Fit(TrainingSet));
+            //Models.Add(LGBMPipeline.Fit(TrainingSet));
+            Models.Add(LSVMOPipeline.Fit(TrainingSet));
+            //Models.Add(SdcaPipeline.Fit(TrainingSet));
+            //Models.Add(SGDCOPipeline.Fit(TrainingSet));
+            //Models.Add(SSGDLROPipeline.Fit(TrainingSet));
+            Models.Add(KPipeline.Fit(TrainingSet));
+
+            return Models;
+        }
+        /// <summary>
+        /// Trains binary classification models built-in to Microsoft.ML on the provided TrainingSet data.
+        /// </summary>
+        /// <param name="mlContext">The Microsoft.ML context to perform operations in.</param>
+        /// <param name="TrainingSet">The time-series dataset to train the models on.</param>
+        /// <returns>List of models that can be used in performance benchmarks.</returns>
+        public static List<ITransformer> BuildAndTrainBinClassModels(MLContext mlContext, IDataView TrainingSet)
+        {
+            List<ITransformer> Models = new List<ITransformer>();
+            var Pipeline = mlContext.Transforms.Concatenate("Features", "Features");
+
+            //var APPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.AveragedPerceptron());
+            var FFPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.FastForest());
+            var FTPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.FastTree());
+            /*var LBFGSLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LbfgsLogisticRegression());
+            var LGBMPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LightGbm());
+            var LSVMPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LinearSvm());
+            var SdcaLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SdcaLogisticRegression());
+            var SGDCPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SgdCalibrated());
+            var SSGDLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SymbolicSgdLogisticRegression());*/
+            var KPipeline = Pipeline.Append(mlContext.Clustering.Trainers.KMeans(numberOfClusters: 9));
+
+            //Models.Add(APPipeline.Fit(TrainingSet));
+            Models.Add(FFPipeline.Fit(TrainingSet));
+            Models.Add(FTPipeline.Fit(TrainingSet));
+            //Models.Add(LBFGSLRPipeline.Fit(TrainingSet));
+            //Models.Add(LGBMPipeline.Fit(TrainingSet));
+            //Models.Add(LSVMPipeline.Fit(TrainingSet));
+            //Models.Add(SdcaLRPipeline.Fit(TrainingSet));
+            //Models.Add(SGDCPipeline.Fit(TrainingSet));
+            //Models.Add(SSGDLRPipeline.Fit(TrainingSet));
+            Models.Add(KPipeline.Fit(TrainingSet));
+
+            return Models;
+        }
+        /// <summary>
+        /// Train regression classification models built-in to Microsoft.ML on the provided TrainingSet data.
+        /// </summary>
+        /// <param name="mlContext">The Microsoft.ML context to perform operations in.</param>
+        /// <param name="TrainingSet">The time-series dataset to train the models on.</param>
+        /// <returns>List of models that can be used in performance benchmarks.</returns>
+        public static List<ITransformer> BuildAndTrainRegressionModels(MLContext mlContext, IDataView TrainingSet)
+        {
+            List<ITransformer> Models = new List<ITransformer>();
+            var Pipeline = mlContext.Transforms.CopyColumns("Label", "Result")
+                .Append(mlContext.Transforms.Concatenate("Features", "StressFeatures"));
+            var FastForestPipeline = Pipeline.Append(mlContext.Regression.Trainers.FastForest());
+            var FastTreePipeline = Pipeline.Append(mlContext.Regression.Trainers.FastTree());
+            var FastTreeTweediePipeline = Pipeline.Append(mlContext.Regression.Trainers.FastTreeTweedie());
+            var LBFGSPipeline = Pipeline.Append(mlContext.Regression.Trainers.LbfgsPoissonRegression());
+            var LGBMPipeline = Pipeline.Append(mlContext.Regression.Trainers.LightGbm());
+            /*var OLSOptions = new OlsTrainer.Options()
+            {
+                L2Regularization = 0.5f,
+            };
+            var OLSPipeline = Pipeline.Append(mlContext.Regression.Trainers.Ols(OLSOptions));
+            */
+            /*
+            //TODO: These models have errors to be addressed
+            var OGDOptions = new OnlineGradientDescentTrainer.Options()
+            {
+                NumberOfIterations = 100,
+                ResetWeightsAfterXExamples = 10,
+                L2Regularization = 0.25f,
+                DecreaseLearningRate = true,
+            };
+            var OGDPipeline = Pipeline.Append(mlContext.Regression.Trainers.OnlineGradientDescent(OGDOptions));
+            var SdcaPipeline = Pipeline.Append(mlContext.Regression.Trainers.Sdca());
+            // TODO: Exploding/vanishing gradients causing this line to fail
+            Models.Add(OGDPipeline.Fit(TrainingSet));
+            // TODO: Update, Actual error preventing this from completing: https://github.com/dotnet/machinelearning-samples/issues/833
+            Models.Add(SdcaPipeline.Fit(TrainingSet));
+            */
+
+            Models.Add(FastForestPipeline.Fit(TrainingSet));
+            Models.Add(FastTreePipeline.Fit(TrainingSet));
+            Models.Add(FastTreeTweediePipeline.Fit(TrainingSet));
+            Models.Add(LBFGSPipeline.Fit(TrainingSet));
+            //Models.Add(LGBMPipeline.Fit(TrainingSet));
+            //Models.Add(OLSPipeline.Fit(TrainingSet));
+
+            return Models;
+        }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="Directories"></param>
-        public static void ArceStevensDataset(string Directory, MLContext mlContext, out TrainTestData MultiClass, out TrainTestData BinClass, out TrainTestData RegClass, double TrainTestRatio = 0.1)
+        public static List<ExtractedMultiFeatures> ArceStevensDataset(string Directory)
         {
             List<Tuple<string, string>> SubjectConditions = GetSubjectConditions(ExpFiles);
             List<ExtractedMultiFeatures> MultiFeatureSet = new List<ExtractedMultiFeatures>();
@@ -174,15 +314,19 @@ namespace hai_stress_experiments
                     }
                 }
             }
-            MultiFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 0 });
-            List<ExtractedBinFeatures> BinFeatureSet = MultiToBin(MultiFeatureSet);
-            List<ExtractedRegFeatures> RegFeatureSet = MultiToReg(MultiFeatureSet);
-            IDataView MultiClassView = mlContext.Data.LoadFromEnumerable(MultiFeatureSet);
-            IDataView BinClassView = mlContext.Data.LoadFromEnumerable(BinFeatureSet);
-            IDataView RegClassView = mlContext.Data.LoadFromEnumerable(RegFeatureSet);
-            MultiClass = mlContext.Data.TrainTestSplit(MultiClassView, TrainTestRatio);
-            BinClass = mlContext.Data.TrainTestSplit(BinClassView, TrainTestRatio);
-            RegClass = mlContext.Data.TrainTestSplit(RegClassView, TrainTestRatio);
+            return MultiFeatureSet;
+        }
+
+        public static List<ExtractedMultiFeatures> CombineLabels(List<ExtractedMultiFeatures> Features, List<int> LabelsToMerge, int FinalLabel)
+        {
+            for (int i = 0; i < Features.Count; i++)
+            {
+                if (LabelsToMerge.Contains((int)Features[i].Result))
+                {
+                    Features[i].Result = (uint)FinalLabel;
+                }
+            }
+            return Features;
         }
 
         public static List<Tuple<string, string>> GetSubjectConditions(string[] ExpFiles)
