@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 
 
-def run_testing(load_dataset=False, window_size=5.0):
+def run_testing(dataset, labels, window_size=5.0):
     """Highest function call to run the pipeline from start to finish.
     Parameters
     :param window_size:
@@ -21,10 +21,10 @@ def run_testing(load_dataset=False, window_size=5.0):
                'Decision Tree Classification', 'Random Forest Classification',
                'AdaBoost Classification']
     # Perform pre-processing input pipeline
-    if load_dataset:
-        dataset, labels = wesad.load_features()
-    else:
-        dataset, labels = wesad.windowed_wesad_feature_extraction(window_size=window_size)
+    # if load_dataset:
+    #     dataset, labels = wesad.load_features()
+    # else:
+    #     dataset, labels = wesad.windowed_feature_extraction(window_size=window_size)
     # Setup variables
     multi_class_x, multi_class_y = [], []
     # Iterate through data, remove undefined labels, and add to multi class
@@ -64,12 +64,6 @@ def run_testing(load_dataset=False, window_size=5.0):
               "| Recall: {:.2%}".format(m_metrics[2]))
         print("Confusion Matrix")
         print(np.matrix(m_metrics[4]), '\n')
-
-
-
-
-
-
 
 
 def get_e4_features(signal, signal_type):
@@ -144,25 +138,4 @@ def get_e4_features(signal, signal_type):
         features.append(len(fe.signal_peak_count(scr)))
         features.append(fe.signal_integral(scr))
     return features
-
-
-def get_e4_labels(subject_labels):
-    """Averages the labels of the window
-    Parameters
-    :param subject_labels: ndarray
-        Labels to be averaged
-    :return: float
-        Averaged label value
-    """
-    return np.around(np.average(subject_labels))
-
-
-
-
-
-
-
-
-
-
 

@@ -4,7 +4,18 @@ import wesad_interfacing as inf
 import signal_processing as sp
 import csv
 from sklearn.impute import SimpleImputer
-from inferencing import get_e4_features, get_e4_labels
+from inferencing import get_e4_features
+
+
+def get_e4_labels(subject_labels):
+    """Averages the labels of the window
+    Parameters
+    :param subject_labels: ndarray
+        Labels to be averaged
+    :return: float
+        Averaged label value
+    """
+    return np.around(np.average(subject_labels))
 
 
 def load_csv_dataset(parent_dir):

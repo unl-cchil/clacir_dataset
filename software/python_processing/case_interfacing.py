@@ -5,7 +5,18 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 import signal_processing as sp
 import wesad_interfacing as inf
-from inferencing import get_e4_features, get_e4_labels
+from inferencing import get_e4_features
+
+
+def get_e4_labels(subject_labels):
+    """Averages the labels of the window
+    Parameters
+    :param subject_labels: ndarray
+        Labels to be averaged
+    :return: float
+        Averaged label value
+    """
+    return np.around(np.average(subject_labels))
 
 
 def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
