@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.ML;
 using Microsoft.ML.Data;
+using Microsoft.ML.Trainers;
 using MMIVR.BiosensorFramework.Extensions;
 using MMIVR.BiosensorFramework.InputPipeline;
 using MMIVR.BiosensorFramework.MachineLearningUtilities;
@@ -32,19 +33,28 @@ namespace hai_stress_experiments
         static void Main(string[] args)
         {
             MLContext mlContext = new MLContext();
+            // Extract dataset
+            // 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
             List<ExtractedMultiFeatures> MultiFeatureSet = ArceStevensDataset(TopDir);
-            
-            MultiFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 0 });
+            // Randomize dataset
             MultiFeatureSet = MultiFeatureSet.OrderBy(item => rnd.Next()).ToList();
-
-            var CognitiveLoadSet = CombineLabels(MultiFeatureSet, new List<int>() { 2, 3 }, 0);
+            // Create no accelerometer dataset (removes 0-79 features from each sample) 
+            List<ExtractedMultiFeatures> NoAccFeatureSet = RemoveAccFeatures(MultiFeatureSet);
+            // Create cognitive load focused dataset
+            List<ExtractedMultiFeatures> CognitiveLoadSet = CombineLabels(MultiFeatureSet, new List<int>() { 2, 3 }, 0);
             CognitiveLoadSet = CombineLabels(CognitiveLoadSet, new List<int> { 1, 4 }, 1);
-            
-            //var HAIFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 1, 4 });
-            List<ExtractedBinFeatures> BinFeatureSet = MultiToBin(CognitiveLoadSet);
-            List<ExtractedRegFeatures> RegFeatureSet = MultiToReg(CognitiveLoadSet);
+            // Create HAI focused dataset
+            List<ExtractedMultiFeatures> HAIFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 1, 4 });
 
-            IDataView MultiClassView = mlContext.Data.LoadFromEnumerable(MultiFeatureSet);
+            TrainModels(mlContext, MultiFeatureSet);
+        }
+
+        public static void TrainModels(MLContext mlContext, List<ExtractedMultiFeatures> Dataset)
+        { 
+            List<ExtractedBinFeatures> BinFeatureSet = MultiToBin(Dataset);
+            List<ExtractedRegFeatures> RegFeatureSet = MultiToReg(Dataset);
+            // Perform ML experiments
+            IDataView MultiClassView = mlContext.Data.LoadFromEnumerable(Dataset);
             IDataView BinClassView = mlContext.Data.LoadFromEnumerable(BinFeatureSet);
             IDataView RegClassView = mlContext.Data.LoadFromEnumerable(RegFeatureSet);
 
@@ -139,6 +149,17 @@ namespace hai_stress_experiments
             }
             Console.ReadLine();
         }
+        public static List<ExtractedMultiFeatures> RemoveAccFeatures(List<ExtractedMultiFeatures> Dataset)
+        {
+            for (int i = 0; i < Dataset.Count; i++)
+            {
+                for (int j = 0; j < 80; j++)
+                {
+                    Dataset[i].Features[j] = 0.0f;
+                }
+            }
+            return Dataset;
+        }
         /// <summary>
         /// Trains multi-class models built-in to Microsoft.ML on the TrainingSet provided.
         /// </summary>
@@ -150,14 +171,14 @@ namespace hai_stress_experiments
             List<ITransformer> Models = new List<ITransformer>();
             var Pipeline = mlContext.Transforms.Conversion.MapValueToKey(nameof(ExtractedMultiFeatures.Result))
                 .Append(mlContext.Transforms.CopyColumns("Label", "Result"))
-                .Append(mlContext.Transforms.Concatenate("Features", "StressFeatures"));
+                .Append(mlContext.Transforms.Concatenate("Features", "Features"));
 
             var APOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.AveragedPerceptron()));
             var FFOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.FastForest()));
             var FTOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.FastTree()));
             var LBFGSPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.LbfgsLogisticRegression()));
             var LBFGSMEPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.LbfgsMaximumEntropy());
-            var LGBMPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.LightGbm());
+            //var LGBMPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.LightGbm());
             var LSVMOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.LinearSvm()));
             var SdcaPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.SdcaMaximumEntropy());
             var SGDCOPipeline = Pipeline.Append(mlContext.MulticlassClassification.Trainers.OneVersusAll(mlContext.BinaryClassification.Trainers.SgdCalibrated()));
@@ -172,7 +193,7 @@ namespace hai_stress_experiments
             //Models.Add(LGBMPipeline.Fit(TrainingSet));
             Models.Add(LSVMOPipeline.Fit(TrainingSet));
             //Models.Add(SdcaPipeline.Fit(TrainingSet));
-            //Models.Add(SGDCOPipeline.Fit(TrainingSet));
+            Models.Add(SGDCOPipeline.Fit(TrainingSet));
             //Models.Add(SSGDLROPipeline.Fit(TrainingSet));
             Models.Add(KPipeline.Fit(TrainingSet));
 
@@ -189,25 +210,25 @@ namespace hai_stress_experiments
             List<ITransformer> Models = new List<ITransformer>();
             var Pipeline = mlContext.Transforms.Concatenate("Features", "Features");
 
-            //var APPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.AveragedPerceptron());
+            var APPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.AveragedPerceptron());
             var FFPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.FastForest());
             var FTPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.FastTree());
-            /*var LBFGSLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LbfgsLogisticRegression());
-            var LGBMPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LightGbm());
+            var LBFGSLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LbfgsLogisticRegression());
+            //var LGBMPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LightGbm());
             var LSVMPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.LinearSvm());
             var SdcaLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SdcaLogisticRegression());
             var SGDCPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SgdCalibrated());
-            var SSGDLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SymbolicSgdLogisticRegression());*/
+            //var SSGDLRPipeline = Pipeline.Append(mlContext.BinaryClassification.Trainers.SymbolicSgdLogisticRegression());
             var KPipeline = Pipeline.Append(mlContext.Clustering.Trainers.KMeans(numberOfClusters: 9));
 
-            //Models.Add(APPipeline.Fit(TrainingSet));
+            Models.Add(APPipeline.Fit(TrainingSet));
             Models.Add(FFPipeline.Fit(TrainingSet));
             Models.Add(FTPipeline.Fit(TrainingSet));
-            //Models.Add(LBFGSLRPipeline.Fit(TrainingSet));
+            Models.Add(LBFGSLRPipeline.Fit(TrainingSet));
             //Models.Add(LGBMPipeline.Fit(TrainingSet));
-            //Models.Add(LSVMPipeline.Fit(TrainingSet));
-            //Models.Add(SdcaLRPipeline.Fit(TrainingSet));
-            //Models.Add(SGDCPipeline.Fit(TrainingSet));
+            Models.Add(LSVMPipeline.Fit(TrainingSet));
+            Models.Add(SdcaLRPipeline.Fit(TrainingSet));
+            Models.Add(SGDCPipeline.Fit(TrainingSet));
             //Models.Add(SSGDLRPipeline.Fit(TrainingSet));
             Models.Add(KPipeline.Fit(TrainingSet));
 
@@ -223,7 +244,7 @@ namespace hai_stress_experiments
         {
             List<ITransformer> Models = new List<ITransformer>();
             var Pipeline = mlContext.Transforms.CopyColumns("Label", "Result")
-                .Append(mlContext.Transforms.Concatenate("Features", "StressFeatures"));
+                .Append(mlContext.Transforms.Concatenate("Features", "Features"));
             var FastForestPipeline = Pipeline.Append(mlContext.Regression.Trainers.FastForest());
             var FastTreePipeline = Pipeline.Append(mlContext.Regression.Trainers.FastTree());
             var FastTreeTweediePipeline = Pipeline.Append(mlContext.Regression.Trainers.FastTreeTweedie());
@@ -233,9 +254,8 @@ namespace hai_stress_experiments
             {
                 L2Regularization = 0.5f,
             };
-            var OLSPipeline = Pipeline.Append(mlContext.Regression.Trainers.Ols(OLSOptions));
-            */
-            /*
+            var OLSPipeline = Pipeline.Append(mlContext.Regression.Trainers.Ols(OLSOptions));*/
+            
             //TODO: These models have errors to be addressed
             var OGDOptions = new OnlineGradientDescentTrainer.Options()
             {
@@ -250,8 +270,6 @@ namespace hai_stress_experiments
             Models.Add(OGDPipeline.Fit(TrainingSet));
             // TODO: Update, Actual error preventing this from completing: https://github.com/dotnet/machinelearning-samples/issues/833
             Models.Add(SdcaPipeline.Fit(TrainingSet));
-            */
-
             Models.Add(FastForestPipeline.Fit(TrainingSet));
             Models.Add(FastTreePipeline.Fit(TrainingSet));
             Models.Add(FastTreeTweediePipeline.Fit(TrainingSet));
@@ -270,6 +288,7 @@ namespace hai_stress_experiments
             List<Tuple<string, string>> SubjectConditions = GetSubjectConditions(ExpFiles);
             List<ExtractedMultiFeatures> MultiFeatureSet = new List<ExtractedMultiFeatures>();
             List<Tuple<string, List<double[]>, List<string>, List<double[]>>> Datasets = LoadE4Dataset(Directory);
+            SaveDatasetToCsv(Datasets, SubjectConditions);
             foreach (var Dataset in Datasets)
             {
                 if (SubjectConditions.Exists(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1)))
@@ -300,10 +319,10 @@ namespace hai_stress_experiments
                         SubjectFeatures.AddRange(SignalProcessing.ProcessTmpSignal(Dataset.Item2[6].GetSubArray(i * 4, (i + WindowSize) * 4)));
 
                         uint label = (uint)EventIndices[i];
-
+                        Console.WriteLine("Using label: " + i + " with value: " + label);
                         MultiFeatureSet.Add(new ExtractedMultiFeatures()
                         {
-                            StressFeatures = SubjectFeatures.ToArray().ToFloat(),
+                            Features = SubjectFeatures.ToArray().ToFloat(),
                             Result = label,
                         });
 
@@ -314,7 +333,45 @@ namespace hai_stress_experiments
                     }
                 }
             }
+            MultiFeatureSet = Train.TrimFeatureSet(MultiFeatureSet, new List<int>() { 0 });
             return MultiFeatureSet;
+        }
+
+        public static void SaveDatasetToCsv(List<Tuple<string, List<double[]>, List<string>, List<double[]>>> Datasets, List<Tuple<string, string>> SubjectConditions)
+        {
+            foreach (var Dataset in Datasets)
+            {
+                if (SubjectConditions.Exists(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1)))
+                {
+                    Tuple<string, string> SubjectCondition = SubjectConditions.Find(c => int.Parse(c.Item1) == int.Parse(Dataset.Item1));
+                    int ShortestData = 1;
+                    for (int i = 0; i < Dataset.Item2.Count; i++)
+                    {
+                        if (Dataset.Item2[i].Length / SampleRates[i] < Dataset.Item2[ShortestData].Length / SampleRates[i])
+                        {
+                            ShortestData = i;
+                        }
+                    }
+                    int NumberOfSamples = Dataset.Item2[ShortestData].Length / SampleRates[ShortestData];
+                    List<int> EventIndices = GetEventIndices(Dataset, SubjectCondition.Item2, NumberOfSamples);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < Dataset.Item2.Count(); i++)
+                    {
+                        sb.AppendLine(String.Join(",", Dataset.Item2[i]));
+                    }
+                    for (int i = 0; i < Dataset.Item3.Count(); i++)
+                    {
+                        sb.AppendLine(String.Join(",", Dataset.Item3[i]));
+                    }
+                    for (int i = 0; i < Dataset.Item4.Count(); i++)
+                    {
+                        sb.AppendLine(String.Join(",", Dataset.Item4[i]));
+                    }
+                    sb.AppendLine(String.Join(",", EventIndices));
+                    File.WriteAllText(Dataset.Item1 + ".csv", sb.ToString());
+                    Console.WriteLine("Wrote " + Dataset.Item1 + " to file...");
+                }
+            }
         }
 
         public static List<ExtractedMultiFeatures> CombineLabels(List<ExtractedMultiFeatures> Features, List<int> LabelsToMerge, int FinalLabel)
@@ -551,13 +608,13 @@ namespace hai_stress_experiments
                     ConFeatures.Add(new ExtractedBinFeatures()
                     {
                         Label = false,
-                        Features = FeatureSet[i].StressFeatures
+                        Features = FeatureSet[i].Features
                     });
                 else
                     ConFeatures.Add(new ExtractedBinFeatures()
                     {
                         Label = true,
-                        Features = FeatureSet[i].StressFeatures,
+                        Features = FeatureSet[i].Features,
                     });
             }
             return ConFeatures;
@@ -575,7 +632,7 @@ namespace hai_stress_experiments
                 ConFeatures.Add(new ExtractedRegFeatures()
                 {
                     Result = FeatureSet[i].Result,
-                    StressFeatures = FeatureSet[i].StressFeatures,
+                    Features = FeatureSet[i].Features,
                 });
             }
             return ConFeatures;
