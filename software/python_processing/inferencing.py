@@ -1,20 +1,15 @@
-import wesad_interfacing as wesad
-import clasir_interfacing as clasir
-import case_interfacing as case
 import signal_processing as sp
 import feature_extraction as fe
 import machine_learning_utils as mlu
-import csv
 import numpy as np
-from sklearn.impute import SimpleImputer
 
 
 def run_testing(dataset, labels, window_size=5.0):
     """Highest function call to run the pipeline from start to finish.
     Parameters
+    :param labels:
+    :param dataset:
     :param window_size:
-    :param load_dataset: bool
-        Loads the pickled dataset if True
     """
     # Machine learning labels
     ml_algo = ['Linear Discriminant Analysis', 'K-Neighbors Classification',
@@ -117,7 +112,7 @@ def get_e4_features(signal, signal_type):
         minmax = fe.signal_min_max(signal)
         features.append(minmax[0])
         features.append(minmax[1])
-        features.append(fe.signal_dyanmic_range(signal))
+        features.append(fe.signal_dynamic_range(signal))
         features.append(fe.signal_slope(signal, np.arange(0, len(signal))))
     elif signal_type == 'EDA':
         signal = signal.reshape(-1).ravel()
@@ -126,7 +121,7 @@ def get_e4_features(signal, signal_type):
         features.append(fe.signal_mean(signal))
         features.append(fe.signal_standard_deviation(signal))
         features.append(fe.signal_slope(signal, np.arange(0, len(signal))))
-        features.append(fe.signal_dyanmic_range(signal))
+        features.append(fe.signal_dynamic_range(signal))
         minmax = fe.signal_min_max(signal)
         features.append(minmax[0])
         features.append(minmax[1])

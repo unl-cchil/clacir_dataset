@@ -70,7 +70,7 @@ def signal_absolute(integrated_signal):
     return np.abs(integrated_signal)
 
 
-def signal_dyanmic_range(sampled_signal):
+def signal_dynamic_range(sampled_signal):
     """Calculates the dynamic range of a signal, which is the ratio between the highest value and the lowest value
     Parameters
     :param sampled_signal: ndarray
@@ -163,8 +163,11 @@ def signal_slope(sampled_signal, time_labels):
     :return: float
         Slope of the signal
     """
-    slope, intercept, r_value, p_value, std_err = linregress(sampled_signal, time_labels)
-    return slope
+    try:
+        slope, intercept, r_value, p_value, std_err = linregress(sampled_signal, time_labels)
+        return slope
+    except ValueError:
+        return 0
 
 
 def signal_percentile(sampled_signal, percentile):

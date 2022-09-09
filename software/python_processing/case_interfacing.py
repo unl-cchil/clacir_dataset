@@ -38,7 +38,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     :return: list
         List of features
     """
-    subject_data = inf.load_wesad_dataset('datasets/wesad_raw')
+    subject_data = load_csv_dataset('datasets/case_raw')
     # Initialize return lists
     windowed_train_data = []
     windowed_train_labels = []
