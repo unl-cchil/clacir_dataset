@@ -1,10 +1,14 @@
-import csv
 import glob
+import pickle
+
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+from scipy.spatial import Voronoi, voronoi_plot_2d
+from sklearn import metrics
+from sklearn.cluster import KMeans
 from sklearn.impute import SimpleImputer
 import signal_processing as sp
-import wesad_interfacing as inf
 from inferencing import get_e4_features
 
 
@@ -128,14 +132,9 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         subject_data_list = []
         subject_label_list = []
     print("Converting lists to arrays...")
-    datasets = []
-    datasets.append(windowed_train_data)
-    datasets.append(windowed_test_data)
-    datasets.append(windowed_dev_data)
-    labels = []
-    labels.append(windowed_train_labels)
-    labels.append(windowed_test_labels)
-    labels.append(windowed_dev_labels)
+    datasets = [windowed_train_data, windowed_test_data, windowed_dev_data]
+    labels = [windowed_train_labels, windowed_test_labels, windowed_dev_labels]
+
     datasets_array = []
     labels_array = []
     for dataset, label in zip(datasets, labels):
@@ -166,25 +165,19 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     imp.transform(datasets_array[0])
     imp.fit(labels_array[0])
     imp.transform(labels_array[0])
-    # TODO: Fix formatting for CSV output. Currently outputs an unintelligible mess.
-    if write_csv:
-        print("Writing to CSV...")
-        with open('extracted_features.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            for data in range(len(datasets_array)):
-                for i in range(len(datasets_array[data])):
-                    print("Writing line: ", i)
-                    writer.writerows([np.append(datasets_array[data][i], [labels_array[data][i]])])
     if write_pickle:
-        print("Currently pickling...")
-        inf.save_features([datasets_array, labels_array])
+        print("Currently pickling cLASIr dataset...")
+        with open('datasets/case_processed/extracted_dataset.pkl', 'wb') as f:
+            pickle.dump({"features": datasets_array,
+                         "labels": labels_array}, f)
     return datasets_array, labels_array
 
 
 def load_csv_dataset(parent_dir):
     datasets_from_dir = []
     annotations_from_dir = []
-    unpickled_datasets = []
+    datasets = []
+    annotations = []
 
     for filename in glob.iglob(parent_dir + r'\physiological\*', recursive=True):
         if filename.endswith(".csv"):
@@ -193,12 +186,59 @@ def load_csv_dataset(parent_dir):
         if filename.endswith(".csv"):
             annotations_from_dir.append(filename)
 
+    clustered = True
     for dataset, annotation in zip(datasets_from_dir, annotations_from_dir):
-        unpickled_datasets.append([])
+        print(f"Processing {dataset}...")
+        datasets.append([])
+        annotations.append([])
         d_df = pd.read_csv(dataset)
         for col in ['daqtime', 'bvp', 'gsr', 'skt']:
-            unpickled_datasets[-1].append(d_df[col].to_list())
+            datasets[-1].append(d_df[col].to_list())
         a_df = pd.read_csv(annotation)
-        for col in ['jstime', 'valence', 'arousal']:
-            unpickled_datasets[-1].append(a_df[col].to_list())
-    return unpickled_datasets
+        for col in ['jstime', 'valence', 'arousal', 'video', 'cluster']:
+            try:
+                annotations[-1].append(a_df[col].to_list())
+            except KeyError:
+                clustered = False
+
+    if not clustered:
+        k_data_x, k_data_y = [], []
+        for a in annotations:
+            k_data_x.extend(a[1])
+            k_data_y.extend(a[2])
+
+        print(f"Clustering with k-means...")
+        k_data = np.column_stack((k_data_x, k_data_y))
+        kmean = KMeans(n_clusters=4)
+        kmean.fit(k_data)
+
+        index_count = 0
+        for a in annotations:
+            a.append(kmean.labels_[index_count:index_count+len(a[1])])
+            index_count += len(a[1])
+
+        y_pred = kmean.predict(k_data)
+        plt.scatter(k_data_x, k_data_y, c=y_pred, s=50)
+        centers = kmean.cluster_centers_
+        print("Calculating Silhouette score...")
+        s_score = metrics.silhouette_score(k_data, kmean.labels_, metric='euclidean', sample_size=5000)
+        print(f"Silhouette Score: {s_score}")
+        center = 0
+        for c in centers:
+            plt.text(c[0], c[1], center)
+            print(f"Center {center}: {c}")
+            center += 1
+        plt.xlim([0, 10])
+        plt.ylim([0, 10])
+        plt.title('CASE Dataset Clustering')
+        plt.xlabel('Valence')
+        plt.ylabel('Arousal')
+        plt.savefig(parent_dir + r'\clustered_case.png')
+
+        # for annotation, new_a in zip(annotations_from_dir[0:2], annotations[0:2]):
+        #     datasets.append([])
+        #     annotations.append([])
+        #     a_df = pd.read_csv(annotation)
+        #     a_df['cluster'] = new_a[-1]
+        #     a_df.to_csv(annotation)
+    return datasets, annotations

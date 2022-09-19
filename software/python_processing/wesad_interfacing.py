@@ -66,18 +66,17 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     print("Beginning train sample processing...")
     for train in range(0, train_samples):
         print("Processing subject number:", train)
-        bvp_generator = sp.split_set(subject_data[train]['signal']['wrist']['BVP'], bvp_window_size)
-        eda_generator = sp.split_set(subject_data[train]['signal']['wrist']['EDA'], eda_window_size)
-        acc_generator = sp.split_set(subject_data[train]['signal']['wrist']['ACC'], acc_window_size)
-        temp_generator = sp.split_set(subject_data[train]['signal']['wrist']['TEMP'], temp_window_size)
-        label_generator = sp.split_set(subject_data[train]['label'], label_window_size)
-        for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator,
-                                              label_generator):
+        bvp_generator = sp.split_set(subject_data[train]['signal']['wrist']['BVP'], bvp_window_size, 64.0 / 4)
+        eda_generator = sp.split_set(subject_data[train]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
+        acc_generator = sp.split_set(subject_data[train]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
+        temp_generator = sp.split_set(subject_data[train]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
+        label_generator = sp.split_set(subject_data[train]['label'], label_window_size, 1)
+        for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
             window_data.append(get_e4_features(bvp, 'BVP'))
             window_data.append(get_e4_features(eda, 'EDA'))
             if not exclude_acc:
                 window_data.append(get_e4_features(acc, 'ACC'))
-            window_data.append(get_e4_features(temp, 'TEMP'))
+                window_data.append(get_e4_features(temp, 'TEMP'))
             window_label.append(get_e4_labels(label))
             subject_data_list.append(window_data)
             subject_label_list.append(window_label)
@@ -89,18 +88,17 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         subject_label_list = []
     for test in range(train_samples, train_samples + test_samples):
         print("Processing subject number:", test)
-        bvp_generator = sp.split_set(subject_data[test]['signal']['wrist']['BVP'], bvp_window_size)
-        eda_generator = sp.split_set(subject_data[test]['signal']['wrist']['EDA'], eda_window_size)
-        acc_generator = sp.split_set(subject_data[test]['signal']['wrist']['ACC'], acc_window_size)
-        temp_generator = sp.split_set(subject_data[test]['signal']['wrist']['TEMP'], temp_window_size)
-        label_generator = sp.split_set(subject_data[test]['label'], label_window_size)
-        for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator,
-                                              label_generator):
+        bvp_generator = sp.split_set(subject_data[test]['signal']['wrist']['BVP'], bvp_window_size, 64.0 / 4)
+        eda_generator = sp.split_set(subject_data[test]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
+        acc_generator = sp.split_set(subject_data[test]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
+        temp_generator = sp.split_set(subject_data[test]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
+        label_generator = sp.split_set(subject_data[test]['label'], label_window_size, 1)
+        for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
             window_data.append(get_e4_features(bvp, 'BVP'))
             window_data.append(get_e4_features(eda, 'EDA'))
             if not exclude_acc:
                 window_data.append(get_e4_features(acc, 'ACC'))
-            window_data.append(get_e4_features(temp, 'TEMP'))
+                window_data.append(get_e4_features(temp, 'TEMP'))
             window_label.append(get_e4_labels(label))
             subject_data_list.append(window_data)
             subject_label_list.append(window_label)
@@ -112,18 +110,17 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         subject_label_list = []
     for dev in range(train_samples + test_samples, train_samples + test_samples + dev_samples):
         print("Processing subject number:", dev)
-        bvp_generator = sp.split_set(subject_data[dev]['signal']['wrist']['BVP'], bvp_window_size)
-        eda_generator = sp.split_set(subject_data[dev]['signal']['wrist']['EDA'], eda_window_size)
-        acc_generator = sp.split_set(subject_data[dev]['signal']['wrist']['ACC'], acc_window_size)
-        temp_generator = sp.split_set(subject_data[dev]['signal']['wrist']['TEMP'], temp_window_size)
-        label_generator = sp.split_set(subject_data[dev]['label'], label_window_size)
-        for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator,
-                                              label_generator):
+        bvp_generator = sp.split_set(subject_data[dev]['signal']['wrist']['BVP'], bvp_window_size, 64.0 / 4)
+        eda_generator = sp.split_set(subject_data[dev]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
+        acc_generator = sp.split_set(subject_data[dev]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
+        temp_generator = sp.split_set(subject_data[dev]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
+        label_generator = sp.split_set(subject_data[dev]['label'], label_window_size, 1)
+        for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
             window_data.append(get_e4_features(bvp, 'BVP'))
             window_data.append(get_e4_features(eda, 'EDA'))
             if not exclude_acc:
                 window_data.append(get_e4_features(acc, 'ACC'))
-            window_data.append(get_e4_features(temp, 'TEMP'))
+                window_data.append(get_e4_features(temp, 'TEMP'))
             window_label.append(get_e4_labels(label))
             subject_data_list.append(window_data)
             subject_label_list.append(window_label)
@@ -167,18 +164,12 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     imp.transform(datasets_array[0])
     imp.fit(labels_array[0])
     imp.transform(labels_array[0])
-    # TODO: Fix formatting for CSV output. Currently outputs an unintelligible mess.
-    if write_csv:
-        print("Writing to CSV...")
-        with open('extracted_features.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            for data in range(len(datasets_array)):
-                for i in range(len(datasets_array[data])):
-                    print("Writing line: ", i)
-                    writer.writerows([np.append(datasets_array[data][i], [labels_array[data][i]])])
+
     if write_pickle:
-        print("Currently pickling...")
-        inf.save_features([datasets_array, labels_array])
+        print("Currently pickling WESAD dataset...")
+        with open('datasets/wesad_processed/extracted_dataset.pkl', 'wb') as f:
+            pickle.dump({"features": datasets_array,
+                         "labels": labels_array}, f)
     return datasets_array, labels_array
 
 
@@ -208,11 +199,6 @@ def load_csv_dataset(parent_dir):
             for row in reader:
                 unpickled_datasets[-1].append(list(map(float, row)))
     return unpickled_datasets
-
-
-def save_features(features):
-    with open('extracted_features.pkl', 'wb') as f:
-        pickle.dump(features, f)
 
 
 def load_features():

@@ -37,7 +37,7 @@ def get_residual(trended_signal, signal_mean):
     return trended_signal - signal_mean
 
 
-def split_set(signal, split_size):
+def split_set(signal, split_size, jump_size):
     """Split a signal into specified number of chunks.  Handles uneven splits. Handled by a generator.
     Very useful for pulling apart a dataaset to calculate features since you don't need the separated dataset.
     Encapsulate result in list: list(split_set(signal, split_size)) if you don't want to use the generator
@@ -50,5 +50,5 @@ def split_set(signal, split_size):
     :return: generator
         Returns an iterable object to perform this function real-time
     """
-    for i in range(0, len(signal), int(split_size)):
+    for i in range(0, len(signal), int(jump_size)):
         yield signal[i:i + int(split_size)]
