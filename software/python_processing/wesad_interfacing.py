@@ -64,6 +64,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         eda_window_size = 4.0 * window_size
         temp_window_size = 4.0 * window_size
         label_window_size = 700.0 * window_size
+        feature_count = 0
         # Segment dataset types
         train_samples = int(np.round(len(subject_data) * train_portion))
         test_samples = int(np.round(len(subject_data) * test_portion))
@@ -82,13 +83,14 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
-                    window_data.append(get_e4_features(bvp, 'BVP'))
-                    window_data.append(get_e4_features(eda, 'EDA'))
+                    window_data.extend(get_e4_features(bvp, 'BVP'))
+                    window_data.extend(get_e4_features(eda, 'EDA'))
                     if not exclude_acc:
-                        window_data.append(get_e4_features(acc, 'ACC'))
-                    window_data.append(get_e4_features(temp, 'TEMP'))
+                        window_data.extend(get_e4_features(acc, 'ACC'))
+                    window_data.extend(get_e4_features(temp, 'TEMP'))
+                    feature_count = len(window_data)
                     window_label.append(get_e4_labels(label))
-                    subject_data_list.append(window_data)
+                    subject_data_list.append(np.array(window_data))
                     subject_label_list.append(window_label)
                     window_data = []
                     window_label = []
@@ -107,13 +109,14 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
-                    window_data.append(get_e4_features(bvp, 'BVP'))
-                    window_data.append(get_e4_features(eda, 'EDA'))
+                    window_data.extend(get_e4_features(bvp, 'BVP'))
+                    window_data.extend(get_e4_features(eda, 'EDA'))
                     if not exclude_acc:
-                        window_data.append(get_e4_features(acc, 'ACC'))
-                    window_data.append(get_e4_features(temp, 'TEMP'))
+                        window_data.extend(get_e4_features(acc, 'ACC'))
+                    window_data.extend(get_e4_features(temp, 'TEMP'))
+                    feature_count = len(window_data)
                     window_label.append(get_e4_labels(label))
-                    subject_data_list.append(window_data)
+                    subject_data_list.append(np.array(window_data))
                     subject_label_list.append(window_label)
                     window_data = []
                     window_label = []
@@ -132,13 +135,14 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
-                    window_data.append(get_e4_features(bvp, 'BVP'))
-                    window_data.append(get_e4_features(eda, 'EDA'))
+                    window_data.extend(get_e4_features(bvp, 'BVP'))
+                    window_data.extend(get_e4_features(eda, 'EDA'))
                     if not exclude_acc:
-                        window_data.append(get_e4_features(acc, 'ACC'))
-                    window_data.append(get_e4_features(temp, 'TEMP'))
+                        window_data.extend(get_e4_features(acc, 'ACC'))
+                    window_data.extend(get_e4_features(temp, 'TEMP'))
+                    feature_count = len(window_data)
                     window_label.append(get_e4_labels(label))
-                    subject_data_list.append(window_data)
+                    subject_data_list.append(np.array(window_data))
                     subject_label_list.append(window_label)
                     window_data = []
                     window_label = []
@@ -153,11 +157,11 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         datasets_array = []
         labels_array = []
         for dataset, label in zip(datasets, labels):
-            x_train = np.empty((58,))
+            x_train = np.empty((feature_count,))
             y_train = np.empty((1,))
             for window, lbl in zip(dataset, label):
                 for x, y in zip(window, lbl):
-                    data_window = np.hstack((np.array(x[0]), np.array(x[1]), np.array(x[2]), np.array(x[3])))
+                    data_window = x
                     data_window[np.isnan(data_window)] = 0
                     data_window[np.isinf(data_window)] = 0
                     data_label = np.array(y[0])
