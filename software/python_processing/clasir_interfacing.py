@@ -6,6 +6,8 @@ import numpy as np
 import signal_processing as sp
 import csv
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import normalize
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from inferencing import get_e4_features
 
 
@@ -47,6 +49,36 @@ def load_csv_dataset(parent_dir):
     else:
         raise ValueError("No cLASIr datasets found!")
     return data, labels
+
+
+def normalize_dataset(dataset):
+    normalized_dataset = []
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    for x in dataset:
+        normalized_dataset.append(scaler.fit_transform(x))
+    return normalized_dataset
+
+
+def trim_data(dataset, labels):
+    # 0 = N/A | 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
+    trimmed_dataset, trimmed_labels = [], []
+    for x, y in zip(dataset, labels):
+        del_indxs = np.hstack((np.where(y == 0.0)[0], np.where(y == 4)[0]))
+        trimmed_labels.append(np.delete(y, del_indxs, 0))
+        trimmed_dataset.append(np.delete(x, del_indxs, 0))
+        trimmed_labels[-1][trimmed_labels == 3] = 0
+    return trimmed_dataset, trimmed_labels
+
+
+def binarize_dataset(dataset, labels):
+    # Trim dataset first
+    # 1 = Precondition | 2 = HAI | 3 = Control
+    binary_dataset, binary_labels = [], []
+    for x, y in zip(dataset, labels):
+        binary_dataset.append(x)
+        binary_labels.append(y)
+        binary_labels[-1][binary_labels == 2] = 0
+    return binary_dataset, binary_labels
 
 
 def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
@@ -198,4 +230,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             with open(f'datasets/clasir_processed/{dataset_name}.pkl', 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
-    return datasets_array, labels_array
+    datasets_array, labels_array = trim_data(datasets_array, labels_array)
+    datasets_array = normalize_dataset(datasets_array)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)

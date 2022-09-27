@@ -4,6 +4,8 @@ import pickle
 import numpy as np
 import scipy.signal as signal
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler
+
 import signal_processing as sp
 import os
 from inferencing import get_e4_features
@@ -18,6 +20,42 @@ def get_e4_labels(subject_labels):
         Averaged label value
     """
     return np.around(np.average(subject_labels))
+
+
+def normalize_dataset(dataset):
+    normalized_dataset = []
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    for x in dataset:
+        normalized_dataset.append(scaler.fit_transform(x))
+    return normalized_dataset
+
+
+def trim_data(subject_data, subject_labels):
+    """Trims the dataset of the unused labels and windows, prepares it to be converted to a binary and multi-class set
+    Parameters
+    :param subject_labels: ndarray
+        Array of labels for the subject
+    :param subject_data: ndarray
+        Array for daya for the subject aligned with the labels
+    :return: ndarray, ndarray
+        Trimmed data and labels
+    """
+    del_indxs = np.hstack((np.where(subject_labels >= 4.0)[0], np.where(subject_labels == 0.0)[0]))
+    del_labels = np.delete(subject_labels, del_indxs, 0)
+    del_data = np.delete(subject_data, del_indxs, 0)
+    return del_data, del_labels
+
+
+def binarize_dataset(dataset, labels):
+    # Merge amusement into neutral class
+    binary_dataset, binary_labels = [], []
+    for x, y in zip(dataset, labels):
+        binary_dataset.append(x)
+        binary_labels.append(y)
+        binary_labels[-1][binary_labels == 3] = 0
+        binary_labels[-1][binary_labels == 1] = 0
+        binary_labels[-1][binary_labels == 2] = 1
+    return binary_dataset, binary_labels
 
 
 def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
@@ -190,7 +228,11 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             with open(f'datasets/wesad_processed/{dataset_name}.pkl', 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
-    return datasets_array, labels_array
+
+    datasets_array, labels_array = trim_data(datasets_array, labels_array)
+    datasets_array = normalize_dataset(datasets_array)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)
 
 
 def save_dataset(subject_data):

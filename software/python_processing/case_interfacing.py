@@ -9,6 +9,8 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler
+
 import signal_processing as sp
 from inferencing import get_e4_features
 
@@ -22,6 +24,34 @@ def get_e4_labels(subject_labels):
         Averaged label value
     """
     return np.around(np.average(subject_labels))
+
+
+def normalize_dataset(dataset):
+    normalized_dataset = []
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    for x in dataset:
+        normalized_dataset.append(scaler.fit_transform(x))
+    return normalized_dataset
+
+
+def trim_dataset(dataset, labels):
+    trimmed_dataset, trimmed_dataset = [], []
+    for x, y in zip(dataset, labels):
+        del_labels = np.where(x == 3)
+        trimmed_dataset.append(np.delete(x, del_labels, 0))
+        trimmed_dataset.append(np.delete(y, del_labels, 0))
+    return trimmed_dataset, trimmed_dataset
+
+
+def binarize_dataset(dataset, labels):
+    # Pose stress vs. non-stress problem, merge boredom and amusement into neutral
+    # 0 = neutral | 1 = stress/fear | 2 = amusement | 3 = boredom
+    binary_dataset, binary_labels = [], []
+    for x, y in zip(dataset, labels):
+        binary_dataset.append(x)
+        binary_labels.append(y)
+        binary_labels[-1][binary_labels > 1] = 0
+    return binary_dataset, binary_labels
 
 
 def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
@@ -166,7 +196,10 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             with open(f'datasets/case_processed/{dataset_name}.pkl', 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
-    return datasets_array, labels_array
+    datasets_array, labels_array = trim_dataset(datasets_array, labels_array)
+    datasets_array = normalize_dataset(datasets_array)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)
 
 
 def load_csv_dataset(parent_dir):
