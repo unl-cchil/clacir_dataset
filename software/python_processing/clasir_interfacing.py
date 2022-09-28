@@ -63,21 +63,20 @@ def trim_data(dataset, labels):
     # 0 = N/A | 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
     trimmed_dataset, trimmed_labels = [], []
     for x, y in zip(dataset, labels):
-        del_indxs = np.hstack((np.where(y == 0.0)[0], np.where(y == 4)[0]))
+        del_indxs = np.hstack((np.where(y == 0.0)[0], np.where(y >= 4)[0]))
         trimmed_labels.append(np.delete(y, del_indxs, 0))
         trimmed_dataset.append(np.delete(x, del_indxs, 0))
-        trimmed_labels[-1][trimmed_labels == 3] = 0
+        trimmed_labels[-1][trimmed_labels[-1] == 3] = 0
     return trimmed_dataset, trimmed_labels
 
 
 def binarize_dataset(dataset, labels):
-    # Trim dataset first
     # 1 = Precondition | 2 = HAI | 3 = Control
     binary_dataset, binary_labels = [], []
     for x, y in zip(dataset, labels):
         binary_dataset.append(x)
         binary_labels.append(y)
-        binary_labels[-1][binary_labels == 2] = 0
+        binary_labels[-1][binary_labels[-1] == 2] = 0
     return binary_dataset, binary_labels
 
 
@@ -87,7 +86,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     if os.path.exists(f'datasets/clasir_processed/{dataset_name}.pkl'):
         print("Pickled cLASIr dataset exists...")
         with open(f'datasets/clasir_processed/{dataset_name}.pkl', 'rb') as f:
-            datasets_array, labels_array = pickle.load(f)
+            dataset = pickle.load(f)
+        datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
         data, labels = load_csv_dataset('datasets/clasir_raw')
         # Initialize return lists
@@ -148,7 +148,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             eda_generator = sp.split_set(data[test][2], eda_window_size, 4.0 / 4)
             acc_generator = sp.split_set(data[test][0], acc_window_size, 32.0 / 4)
             temp_generator = sp.split_set(data[test][3], temp_window_size, 4.0 / 4)
-            label_generator = sp.split_set(labels[test], label_window_size, 1)
+            label_generator = sp.split_set(labels[test], label_window_size, window_size / 4)
             for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
@@ -218,6 +218,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             labels_array.append(y_train)
 
         print("Imputing missing features...")
+        labels_array[0][0] = 0.0
+        datasets_array[0][0] = 0.0
         nan_imp = SimpleImputer(missing_values=np.nan, strategy='mean')
         inf_imp = SimpleImputer(missing_values=np.inf, strategy='mean')
         for i in range(0, len(datasets_array)):

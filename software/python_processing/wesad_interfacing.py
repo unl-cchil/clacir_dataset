@@ -40,9 +40,11 @@ def trim_data(subject_data, subject_labels):
     :return: ndarray, ndarray
         Trimmed data and labels
     """
-    del_indxs = np.hstack((np.where(subject_labels >= 4.0)[0], np.where(subject_labels == 0.0)[0]))
-    del_labels = np.delete(subject_labels, del_indxs, 0)
-    del_data = np.delete(subject_data, del_indxs, 0)
+    del_data, del_labels = [], []
+    for x, y in zip(subject_data, subject_labels):
+        del_indxs = np.hstack((np.where(y >= 4.0)[0], np.where(y == 0.0)[0]))
+        del_labels.append(np.delete(y, del_indxs, 0))
+        del_data.append(np.delete(x, del_indxs, 0))
     return del_data, del_labels
 
 
@@ -52,9 +54,9 @@ def binarize_dataset(dataset, labels):
     for x, y in zip(dataset, labels):
         binary_dataset.append(x)
         binary_labels.append(y)
-        binary_labels[-1][binary_labels == 3] = 0
-        binary_labels[-1][binary_labels == 1] = 0
-        binary_labels[-1][binary_labels == 2] = 1
+        binary_labels[-1][binary_labels[-1] == 3] = 0
+        binary_labels[-1][binary_labels[-1] == 1] = 0
+        binary_labels[-1][binary_labels[-1] == 2] = 1
     return binary_dataset, binary_labels
 
 
@@ -81,7 +83,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     if os.path.exists(f'datasets/wesad_processed/{dataset_name}.pkl'):
         print("Pickled WESAD dataset exists...")
         with open(f'datasets/wesad_processed/{dataset_name}.pkl', 'rb') as f:
-            datasets_array, labels_array = pickle.load(f)
+            dataset = pickle.load(f)
+        datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
         subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
         # Initialize return lists
@@ -116,7 +119,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             eda_generator = sp.split_set(subject_data[train]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
             acc_generator = sp.split_set(subject_data[train]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
             temp_generator = sp.split_set(subject_data[train]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
-            label_generator = sp.split_set(subject_data[train]['label'], label_window_size, 1)
+            label_generator = sp.split_set(subject_data[train]['label'], label_window_size, 700.0 / 4)
             for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
@@ -142,7 +145,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             eda_generator = sp.split_set(subject_data[test]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
             acc_generator = sp.split_set(subject_data[test]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
             temp_generator = sp.split_set(subject_data[test]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
-            label_generator = sp.split_set(subject_data[test]['label'], label_window_size, 1)
+            label_generator = sp.split_set(subject_data[test]['label'], label_window_size, 700.0 / 4)
             for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
@@ -168,7 +171,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             eda_generator = sp.split_set(subject_data[dev]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
             acc_generator = sp.split_set(subject_data[dev]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
             temp_generator = sp.split_set(subject_data[dev]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
-            label_generator = sp.split_set(subject_data[dev]['label'], label_window_size, 1)
+            label_generator = sp.split_set(subject_data[dev]['label'], label_window_size, 700.0 / 4)
             for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue

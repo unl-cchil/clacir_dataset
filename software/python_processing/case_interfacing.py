@@ -50,7 +50,7 @@ def binarize_dataset(dataset, labels):
     for x, y in zip(dataset, labels):
         binary_dataset.append(x)
         binary_labels.append(y)
-        binary_labels[-1][binary_labels > 1] = 0
+        binary_labels[-1][binary_labels[-1] > 1] = 0
     return binary_dataset, binary_labels
 
 
@@ -60,7 +60,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     if os.path.exists(f'datasets/case_processed/{dataset_name}.pkl'):
         print("Pickled CASE dataset exists...")
         with open(f'datasets/case_processed/{dataset_name}.pkl', 'rb') as f:
-            datasets_array, labels_array = pickle.load(f)
+            dataset = pickle.load(f)
+        datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
         subject_data, annotations = load_csv_dataset('datasets/case_raw')
         # Initialize return lists
