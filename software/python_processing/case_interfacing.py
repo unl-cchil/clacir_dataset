@@ -54,8 +54,13 @@ def binarize_dataset(dataset, labels):
     return binary_dataset, binary_labels
 
 
+def remove_nan(dataset):
+    for x in dataset:
+        np.nan_to_num(x, nan=0, posinf=0, neginf=0, copy=False)
+
+
 def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
-                                      write_csv=True, write_pickle=True, dataset_name="case"):
+                                write_pickle=True, dataset_name="case"):
     print("Collecting CASE dataset...\n")
     if os.path.exists(f'datasets/case_processed/{dataset_name}.pkl'):
         print("Pickled CASE dataset exists...")
@@ -65,23 +70,21 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     else:
         subject_data, annotations = load_csv_dataset('datasets/case_raw')
         # Initialize return lists
-        windowed_train_data = []
-        windowed_train_labels = []
-        windowed_test_data = []
-        windowed_test_labels = []
-        windowed_dev_data = []
-        windowed_dev_labels = []
+        windowed_train_data = None
+        windowed_train_labels = None
+        windowed_test_data = None
+        windowed_test_labels = None
+        windowed_dev_data = None
+        windowed_dev_labels = None
         # Initialize subject lists
-        subject_data_list = []
-        subject_label_list = []
+        subject_data_list = None
+        subject_label_list = None
         window_data = []
-        window_label = []
         # Signal window sizes
         bvp_window_size = 1000.0 * window_size
         eda_window_size = 1000.0 * window_size
         temp_window_size = 1000.0 * window_size
         label_window_size = 250.0 * window_size
-        feature_count = 0
         # Segment dataset types
         train_samples = int(np.round(len(subject_data) * train_portion))
         test_samples = int(np.round(len(subject_data) * test_portion))
@@ -102,16 +105,26 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                     window_data.extend(get_e4_features(bvp, 'BVP'))
                     window_data.extend(get_e4_features(eda, 'EDA'))
                     window_data.extend(get_e4_features(temp, 'TEMP'))
-                    feature_count = len(window_data)
-                    window_label.append(get_e4_labels(label))
-                    subject_data_list.append(np.array(window_data))
-                    subject_label_list.append(window_label)
+                    window_label = get_e4_labels(label)
+                    if subject_data_list is None:
+                        subject_data_list = np.array(window_data)
+                    else:
+                        subject_data_list = np.vstack((subject_data_list, np.array(window_data)))
+                    if subject_label_list is None:
+                        subject_label_list = np.array(window_label)
+                    else:
+                        subject_label_list = np.vstack((subject_label_list, np.array(window_label)))
                     window_data = []
-                    window_label = []
-            windowed_train_data.append(subject_data_list)
-            windowed_train_labels.append(subject_label_list)
-            subject_data_list = []
-            subject_label_list = []
+            if windowed_train_data is None:
+                windowed_train_data = subject_data_list
+            else:
+                windowed_train_data = np.vstack((windowed_train_data, subject_data_list))
+            if windowed_train_labels is None:
+                windowed_train_labels = subject_label_list
+            else:
+                windowed_train_labels = np.vstack((windowed_train_labels, subject_label_list))
+            subject_data_list = None
+            subject_label_list = None
         for test in range(train_samples, train_samples + test_samples):
             print("Processing subject number:", test)
             bvp_generator = sp.split_set(subject_data[test][1], bvp_window_size, 250)
@@ -125,16 +138,26 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                     window_data.extend(get_e4_features(bvp, 'BVP'))
                     window_data.extend(get_e4_features(eda, 'EDA'))
                     window_data.extend(get_e4_features(temp, 'TEMP'))
-                    feature_count = len(window_data)
-                    window_label.append(get_e4_labels(label))
-                    subject_data_list.append(np.array(window_data))
-                    subject_label_list.append(window_label)
+                    window_label = get_e4_labels(label)
+                    if subject_data_list is None:
+                        subject_data_list = np.array(window_data)
+                    else:
+                        subject_data_list = np.vstack((subject_data_list, np.array(window_data)))
+                    if subject_label_list is None:
+                        subject_label_list = np.array(window_label)
+                    else:
+                        subject_label_list = np.vstack((subject_label_list, np.array(window_label)))
                     window_data = []
-                    window_label = []
-            windowed_test_data.append(subject_data_list)
-            windowed_test_labels.append(subject_label_list)
-            subject_data_list = []
-            subject_label_list = []
+            if windowed_test_data is None:
+                windowed_test_data = subject_data_list
+            else:
+                windowed_test_data = np.vstack((windowed_test_data, subject_data_list))
+            if windowed_test_labels is None:
+                windowed_test_labels = subject_label_list
+            else:
+                windowed_test_labels = np.vstack((windowed_test_labels, subject_label_list))
+            subject_data_list = None
+            subject_label_list = None
         for dev in range(train_samples + test_samples, train_samples + test_samples + dev_samples):
             print("Processing subject number:", dev)
             bvp_generator = sp.split_set(subject_data[dev][1], bvp_window_size, 250)
@@ -148,55 +171,39 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                     window_data.extend(get_e4_features(bvp, 'BVP'))
                     window_data.extend(get_e4_features(eda, 'EDA'))
                     window_data.extend(get_e4_features(temp, 'TEMP'))
-                    feature_count = len(window_data)
-                    window_label.append(get_e4_labels(label))
-                    subject_data_list.append(np.array(window_data))
-                    subject_label_list.append(window_label)
+                    window_label = get_e4_labels(label)
+                    if subject_data_list is None:
+                        subject_data_list = np.array(window_data)
+                    else:
+                        subject_data_list = np.vstack((subject_data_list, np.array(window_data)))
+                    if subject_label_list is None:
+                        subject_label_list = np.array(window_label)
+                    else:
+                        subject_label_list = np.vstack((subject_label_list, np.array(window_label)))
                     window_data = []
-                    window_label = []
-            windowed_dev_data.append(subject_data_list)
-            windowed_dev_labels.append(subject_label_list)
-            subject_data_list = []
-            subject_label_list = []
-        print("Converting lists to arrays...")
-        datasets = [windowed_train_data, windowed_test_data, windowed_dev_data]
-        labels = [windowed_train_labels, windowed_test_labels, windowed_dev_labels]
+            if windowed_dev_data is None:
+                windowed_dev_data = subject_data_list
+            else:
+                windowed_dev_data = np.vstack((windowed_dev_data, subject_data_list))
+            if windowed_dev_labels is None:
+                windowed_dev_labels = subject_label_list
+            else:
+                windowed_dev_labels = np.vstack((windowed_dev_labels, subject_label_list))
+            subject_data_list = None
+            subject_label_list = None
 
-        datasets_array = []
-        labels_array = []
-        for dataset, label in zip(datasets, labels):
-            x_train = np.empty((feature_count,))
-            y_train = np.empty((1,))
-            for window, lbl in zip(dataset, label):
-                for x, y in zip(window, lbl):
-                    data_window = x
-                    data_window[np.isnan(data_window)] = 0
-                    data_window[np.isinf(data_window)] = 0
-                    data_label = np.array(y[0])
-                    data_label[np.isnan(data_label)] = 0
-                    data_label[np.isinf(data_label)] = 0
-                    x_train = np.vstack((x_train, data_window))
-                    y_train = np.vstack((y_train, data_label))
-            datasets_array.append(x_train)
-            labels_array.append(y_train)
-        print("Imputing missing features...")
+        datasets_array = [windowed_train_data, windowed_test_data, windowed_dev_data]
+        labels_array = [windowed_train_labels, windowed_test_labels, windowed_dev_labels]
+
         labels_array[0][0] = 0.0
         datasets_array[0][0] = 0.0
-        imp = SimpleImputer(missing_values=np.nan, strategy='mean')
-        imp.fit(datasets_array[0])
-        imp.transform(datasets_array[0])
-        imp.fit(labels_array[0])
-        imp.transform(labels_array[0])
-        imp = SimpleImputer(missing_values=np.inf, strategy='mean')
-        imp.fit(datasets_array[0])
-        imp.transform(datasets_array[0])
-        imp.fit(labels_array[0])
-        imp.transform(labels_array[0])
+
         if write_pickle:
             print("Currently pickling CASE dataset...")
             with open(f'datasets/case_processed/{dataset_name}.pkl', 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
+    remove_nan(datasets_array)
     datasets_array, labels_array = trim_dataset(datasets_array, labels_array)
     datasets_array = normalize_dataset(datasets_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)

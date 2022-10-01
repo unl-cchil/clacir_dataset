@@ -101,8 +101,8 @@ def evaluate_pretrained_models(clf, datasets, experiment_name, threshold=0.7):
 
 
 def train_fresh_models(datasets, experiment_name, threshold=0.7):
-    x_train = datasets[0][0] + datasets[0][1]
-    y_train = datasets[1][0] + datasets[1][1]
+    x_train = np.vstack((datasets[0][0], datasets[0][1]))
+    y_train = np.vstack((datasets[1][0], datasets[1][1]))
     x_test = datasets[0][2]
     y_test = datasets[1][2]
     classifiers = [LinearDiscriminantAnalysis(),
@@ -117,10 +117,9 @@ def train_fresh_models(datasets, experiment_name, threshold=0.7):
     best_model_scores = []
     best_clfs = []
     for clf in classifiers:
-        scores.append(cross_validate(clf, x_train, y_train,
-                                     cv=10, return_estimator=True, scoring=score_metrics))
-        # TODO: Get scores on eval set using best model
-        best_clf = scores[-1]['estimator'][scores[-1]['accuracy'].index(max(scores[-1]['accuracy']))]
+        scores.append(cross_validate(clf, x_train, y_train, cv=10, return_estimator=True, scoring=score_metrics))
+        # Test best classifier from folds
+        best_clf = scores[-1]['estimator'][np.argmax(scores[-1]['test_accuracy'])]
         best_clfs.append(best_clf)
         y_pred = cross_val_predict(best_clf, x_test, y_test, cv=10)
         y_pred_thresh = y_pred > threshold
@@ -135,9 +134,9 @@ def train_fresh_models(datasets, experiment_name, threshold=0.7):
         # Write metrics to file
         if not os.path.exists(os.path.join('results', str(experiment_name))):
             os.mkdir(os.path.join('results', str(experiment_name)))
-        results_csv_file = os.path.join('results', str(experiment_name), 'results.csv')
-        pred_csv_file = os.path.join('results', str(experiment_name), 'pred.csv')
-        roc_csv_file = os.path.join('results', str(experiment_name), 'roc.csv')
+        results_csv_file = os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_results.csv')
+        pred_csv_file = os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_pred.csv')
+        roc_csv_file = os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_roc.csv')
         results_headers = ['Test Accuracy', 'F1 Score', 'Recall', 'Precision', 'ROC-AUC', 'mAP']
         with open(results_csv_file, mode='w', newline='') as f:
             writer = csv.writer(f)
@@ -157,10 +156,11 @@ def train_fresh_models(datasets, experiment_name, threshold=0.7):
 
 
 window_size = 5
-wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True,
-                                                                          dataset_name='wesad_no_acc')
 clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
                                                                              dataset_name='clasir_no_acc')
+
+wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True,
+                                                                          dataset_name='wesad_no_acc')
 
 wesad_multi, wesad_binary = wesad.windowed_feature_extraction(window_size)
 clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
