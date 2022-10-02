@@ -10,9 +10,11 @@ from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.utils import shuffle
 
 import signal_processing as sp
 from inferencing import get_e4_features
+import copy
 
 
 def get_e4_labels(subject_labels):
@@ -45,11 +47,11 @@ def trim_dataset(dataset, labels):
 
 def binarize_dataset(dataset, labels):
     # Pose stress vs. non-stress problem, merge boredom and amusement into neutral
-    # 0 = neutral | 1 = stress/fear | 2 = amusement | 3 = boredom
+    # 0 = neutral | 1 = stress/fear | 2 = amusement
     binary_dataset, binary_labels = [], []
     for x, y in zip(dataset, labels):
-        binary_dataset.append(x)
-        binary_labels.append(y)
+        binary_dataset.append(copy.deepcopy(x))
+        binary_labels.append(copy.deepcopy(y))
         binary_labels[-1][binary_labels[-1] > 1] = 0
     return binary_dataset, binary_labels
 
@@ -206,6 +208,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     remove_nan(datasets_array)
     datasets_array, labels_array = trim_dataset(datasets_array, labels_array)
     datasets_array = normalize_dataset(datasets_array)
+    datasets_array, labels_array = shuffle(datasets_array, labels_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
     return (datasets_array, labels_array), (binary_dataset, binary_labels)
 

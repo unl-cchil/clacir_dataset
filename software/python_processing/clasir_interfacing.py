@@ -1,8 +1,11 @@
+import copy
 import glob
 import os
 import pickle
 
 import numpy as np
+from sklearn.utils import shuffle
+
 import signal_processing as sp
 import csv
 from sklearn.impute import SimpleImputer
@@ -76,11 +79,11 @@ def trim_data(dataset, labels):
 
 
 def binarize_dataset(dataset, labels):
-    # 1 = Precondition | 2 = HAI | 3 = Control
+    # 0 = Control | 1 = Precondition | 2 = HAI
     binary_dataset, binary_labels = [], []
     for x, y in zip(dataset, labels):
-        binary_dataset.append(x)
-        binary_labels.append(y)
+        binary_dataset.append(copy.deepcopy(x))
+        binary_labels.append(copy.deepcopy(y))
         binary_labels[-1][binary_labels[-1] == 2] = 0
     return binary_dataset, binary_labels
 
@@ -242,5 +245,6 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     remove_nan(datasets_array)
     datasets_array, labels_array = trim_data(datasets_array, labels_array)
     datasets_array = normalize_dataset(datasets_array)
+    datasets_array, labels_array = shuffle(datasets_array, labels_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
     return (datasets_array, labels_array), (binary_dataset, binary_labels)
