@@ -3,6 +3,8 @@ Don't forget that line 1135 of venv\Lib\site-packages\sklearn\model_selection\_v
 """
 import os
 import pickle
+from itertools import cycle
+
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,11 +14,12 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.metrics import f1_score, recall_score, precision_score, roc_curve, roc_auc_score, average_precision_score, \
-    accuracy_score, mean_absolute_error, balanced_accuracy_score
+    accuracy_score, mean_absolute_error, balanced_accuracy_score, auc
 from sklearn.model_selection import cross_validate, cross_val_predict, StratifiedKFold
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import label_binarize
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils import shuffle
@@ -206,17 +209,41 @@ def evaluate_pretrained_models(clf, datasets, experiment_name, threshold=0.7, bi
         write_results(final_results, experiment_name, binary)
 
 
-def train_fresh_models(datasets, experiment_name, threshold=0.7, binary=True):
+def multiclass_roc(n_classes, y_test, y_score, clf, experiment_name):
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    lw = 2
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+    colors = cycle(['blue', 'red', 'green'])
+    for i, color in zip(range(n_classes), colors):
+        plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                 label='ROC curve of class {0} (area = {1:0.2f})'
+                       ''.format(i, roc_auc[i]))
+    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
+    plt.xlim([-0.05, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'Receiver operating characteristic for {str(clf)}')
+    plt.legend(loc="lower right")
+    fig = plt.gcf()
+    fig.set_size_inches(10, 7)
+    plt.savefig(os.path.join('results', str(experiment_name), f'{experiment_name}_multi_roc.png'))
+    plt.clf()
+    return roc_auc
+
+
+def train_fresh_models(datasets, experiment_name, binary=True):
     if not os.path.exists(os.path.join('results', str(experiment_name))):
-        # os.mkdir(os.path.join('results', str(experiment_name)))
+        os.mkdir(os.path.join('results', str(experiment_name)))
         x = np.vstack((datasets[0][0], datasets[0][1], datasets[0][2]))
         y = np.vstack((datasets[1][0], datasets[1][1], datasets[1][2])).ravel()
-        x_train = datasets[0][2]
-        y_train = datasets[1][2].ravel()
-        # y_0, y_1 = len(y_train[y_train == 0]), len(y_train[y_train == 1])
-        # y_test_0, y_test_1 = len(y_test[y_test == 0]), len(y_test[y_test == 1])
-        # print(f"{experiment_name} Train Dataset | Class 0 Exemplars: {y_0} | Class 1 Exemplars: {y_1}")
-        # print(f"{experiment_name} Test Dataset | Class 0 Exemplars: {y_test_0} | Class 1 Exemplars: {y_test_1}")
+
+        y_0, y_1 = len(y[y == 0]), len(y[y == 1])
+        print(f"{experiment_name} Dataset | Class 0 Exemplars: {y_0} | Class 1 Exemplars: {y_1}")
 
         classifiers = [LinearDiscriminantAnalysis(),
                        KNeighborsClassifier(9),
@@ -231,155 +258,49 @@ def train_fresh_models(datasets, experiment_name, threshold=0.7, binary=True):
                        # GaussianNB(),
                        # QuadraticDiscriminantAnalysis()
                        ]
-        if binary:
-            score_metric = 'test_roc_auc'
-            score_metrics = (
-                'balanced_accuracy', 'precision', 'recall', 'f1', 'roc_auc', 'accuracy'
-            )
-        else:
-            score_metric = 'test_roc_auc_ovo_weighted'
-            score_metrics = (
-                'accuracy', 'f1_weighted', 'roc_auc_ovo_weighted'
-            )
-        scores = []
-        best_model_scores = []
-        best_clfs = []
-        best_roc_curves = []
         k_fold = StratifiedKFold(n_splits=10, shuffle=True)
         for clf in classifiers:
-            f1_scores, accuracies, roc_curves, maps = [], [], [], []
+            if binary:
+                k_fold_df = dict((sub, []) for sub in ['F1 Score', 'Accuracy', 'AUC'])
+            else:
+                k_fold_df = dict((sub, []) for sub in ['F1 Score', 'Accuracy', 'AUC 0', 'AUC 1', 'AUC 2'])
+            roc_curves = []
             for train_ix, test_ix in k_fold.split(x, y):
-                # select rows
-                train_X, test_x = x[train_ix], x[test_ix]
+                train_x, test_x = x[train_ix], x[test_ix]
                 train_y, test_y = y[train_ix], y[test_ix]
-                model = clf.fit(train_X, train_y)
-                # y_hat = model.predict(x_train)
+                if binary:
+                    y_score = label_binarize(test_y, classes=[0, 1])
+                else:
+                    y_score = label_binarize(test_y, classes=[0, 1, 2])
+                model = clf.fit(train_x, train_y)
                 y_hat_probs = model.predict_proba(test_x)
-                y_hat = np.argmax(y_hat_probs, axis=1)
-                accuracies.append(balanced_accuracy_score(test_y, y_hat))
-                f1_scores.append(f1_score(test_y, y_hat, average='weighted'))
-                _val_recall = recall_score(test_y, y_hat, average='weighted', zero_division=0)
-                _val_precision = precision_score(test_y, y_hat, average='weighted', zero_division=0)
-                # _val_roc_fpr, _val_roc_tpr, _val_roc_thresh = roc_curve(y_train, y_hat_probs[:, 1])
-                _val_roc_auc = roc_auc_score(test_y, y_hat_probs, average='weighted', multi_class='ovr')
-                # _val_map = average_precision_score(y_train, y_hat_probs[:, 1], average='weighted')
-                # roc_curves.append((_val_roc_fpr, _val_roc_tpr))
-                maps.append(_val_roc_auc)
-                # print(f"{str(clf)} Accuracy: {score_valid} F1: {f1_}")
-                # train_0, train_1 = len(train_y[train_y == 0]), len(train_y[train_y == 1])
-                # test_0, test_1 = len(test_y[test_y == 0]), len(test_y[test_y == 1])
-                # print('>Train: 0=%d, 1=%d, Test: 0=%d, 1=%d' % (train_0, train_1, test_0, test_1))
-            # for rc, m in zip(roc_curves, maps):
-            #     plt.plot(rc[0], rc[1], label=f"{str(clf)}: AUC={m:.4f}")
-            # plt.ylabel('True Positive Rate')
-            # plt.xlabel('False Positive Rate')
-            # plt.legend(loc=4)
-            # fig = plt.gcf()
-            # fig.set_size_inches(10, 7)
-            # plt.title(f"Best Models ROC for {experiment_name} | Acc: {np.average(accuracies)} | F1: {np.average(f1_scores)}")
-            # plt.show()
-            print(str(clf))
-            print(np.average(accuracies))
-            print(np.average(f1_scores))
-            print()
-            # print(f"Testing {str(clf)} on {experiment_name}")
-            # scores.append(cross_validate(clf, x_train, y_train, cv=k_fold, return_estimator=True, scoring=score_metrics,
-            #                              verbose=0, n_jobs=-1))
-            # training_df = pd.DataFrame(scores[-1])
-            # training_df.to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training_results.csv'))
-            # # Test best classifier from folds
-            # best_clf = scores[-1]['estimator'][np.argmax(scores[-1][score_metric])]
-            # Get the names of each feature
-            # feature_names = np.arange(0, best_clf.coef_.shape[1])
-            # # Get the coefficients of each feature
-            # coefs = best_clf.coef_.flatten()
-            # # Zip coefficients and names together and make a DataFrame
-            # zipped = zip(feature_names, coefs)
-            # df = pd.DataFrame(zipped, columns=["feature",
-            #                                    "value"])  # Sort the features by the absolute value of their coefficient
-            # df["abs_value"] = df["value"].apply(lambda x: abs(x))
-            # df["colors"] = df["value"].apply(lambda x: "green" if x > 0 else "red")
-            # df = df.sort_values("abs_value", ascending=False)
-            # fig, ax = plt.subplots(1, 1, figsize=(12, 7))
-            # sns.barplot(x="feature",
-            #             y="value",
-            #             data=df.head(20),
-            #             palette=df.head(20)["colors"])
-            # ax.set_xticklabels(ax.get_xticklabels(), rotation=90, fontsize=20)
-            # ax.set_title(f"Top 20 Features {str(best_clf)[0:5]}", fontsize=25)
-            # ax.set_ylabel("Coef", fontsize=22)
-            # ax.set_xlabel("Feature Name", fontsize=22)
-            # plt.savefig(os.path.join('results', str(experiment_name), f'{str(best_clf)[0:5]}_top_20.png'))
-            # best_clfs.append(best_clf)
-            # y_pred = best_clf.predict_proba(x_test)
-            # y_pred_t = best_clf.predict(x_test)
-            # if binary:
-            #     y_pred_thresh = y_pred_t > threshold
-            #     # Compute metrics
-            #     accuracy = accuracy_score(y_test, y_pred_t)
-            #     _val_f1 = f1_score(y_test, y_pred_thresh, average='macro', zero_division=0)
-            #     _val_recall = recall_score(y_test, y_pred_thresh, average='macro', zero_division=0)
-            #     _val_precision = precision_score(y_test, y_pred_thresh, average='macro', zero_division=0)
-            #     _val_roc_fpr, _val_roc_tpr, _val_roc_thresh = roc_curve(y_test, y_pred[:, 1])
-            #     _val_roc_auc = roc_auc_score(y_test, y_pred[:, 1], average='weighted')
-            #     _val_map = average_precision_score(y_test, y_pred[:, 1], average='weighted')
-            #     _val_class_f1 = [None, None, None]
-            #     _val_class_recall = [None, None, None]
-            #     _val_class_precision = [None, None, None]
-            #     _val_class_roc_auc = [None, None, None]
-            # else:
-            #     y_pred_thresh = np.argmax(y_pred, axis=1)
-            #     # Compute metrics
-            #     accuracy = accuracy_score(y_test, y_pred_t)
-            #     _val_class_f1 = f1_score(y_test, y_pred_thresh, labels=[0, 1, 2], average=None, zero_division=0)
-            #     _val_f1 = f1_score(y_test, y_pred_thresh, labels=[0, 1, 2], average='weighted', zero_division=0)
-            #     _val_class_recall = recall_score(y_test, y_pred_thresh, labels=[0, 1, 2], average=None, zero_division=0)
-            #     _val_recall = recall_score(y_test, y_pred_thresh, labels=[0, 1, 2], average='weighted', zero_division=0)
-            #     _val_class_precision = precision_score(y_test, y_pred_thresh, labels=[0, 1, 2], average=None,
-            #                                            zero_division=0)
-            #     _val_precision = precision_score(y_test, y_pred_thresh, labels=[0, 1, 2], average='weighted',
-            #                                      zero_division=0)
-            #     _val_roc_fpr, _val_roc_tpr, _val_roc_thresh = None, None, None
-            #     _val_roc_auc = roc_auc_score(y_test, y_pred, average='weighted', multi_class='ovr')
-            #     _val_class_roc_auc = roc_auc_score(y_test, y_pred, average=None, multi_class='ovr', labels=[0, 1, 2])
-            #     _val_map = None
-            # metrics_dict = {
-            #     'Test Accuracy': accuracy,
-            #     'F1 Score': _val_f1,
-            #     'Class F1 Score': _val_class_f1,
-            #     'Recall': _val_recall,
-            #     'Class Recall': _val_class_recall,
-            #     'Precision': _val_precision,
-            #     'Class Precision': _val_class_precision,
-            #     'ROC-AUC': _val_roc_auc,
-            #     'Class ROC-AUC': _val_class_roc_auc,
-            #     'mAP': _val_map,
-            #     'y_test': y_test,
-            #     'y_pred': y_pred,
-            #     'fpr': _val_roc_fpr,
-            #     'tpr': _val_roc_tpr,
-            #     'roc_thresh': _val_roc_thresh,
-            #     'best_clf': best_clf,
-            #     'training_results': scores[-1]
-            # }
-            # # Write metrics to file
-            # results_file = os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_results.pkl')
-            # with open(results_file, 'wb') as f:
-            #     pickle.dump(metrics_dict, f)
-            # best_roc_curves.append([_val_roc_fpr, _val_roc_tpr])
-            # best_model_scores.append([accuracy, _val_f1, _val_recall, _val_precision, _val_roc_auc, _val_map,
-            #                           _val_class_f1, _val_class_recall, _val_class_precision, _val_class_roc_auc])
-    #     final_results = [scores, best_model_scores, best_clfs, best_roc_curves]
-    #     overall_best_model = final_results[2][np.argmax([i[4] for i in final_results[1]])]
-    #     write_results(final_results, experiment_name, binary)
-    #     results_file = os.path.join('results', str(experiment_name), f'best_model_trained.pkl')
-    #     with open(results_file, 'wb') as f:
-    #         pickle.dump(overall_best_model, f)
-    # else:
-    #     results_file = os.path.join('results', str(experiment_name), f'best_model_trained.pkl')
-    #     with open(results_file, 'rb') as f:
-    #         overall_best_model = pickle.load(f)
-    # return overall_best_model
+                if binary:
+                    y_hat = model.predict(train_x)
+                else:
+                    y_hat = np.argmax(y_hat_probs, axis=1)
+                k_fold_df['Accuracy'].append(balanced_accuracy_score(test_y, y_hat))
+                k_fold_df['F1 Score'].append(f1_score(test_y, y_hat, average='weighted'))
+                if binary:
+                    _val_roc_fpr, _val_roc_tpr, _ = roc_curve(y_score, y_hat_probs)
+                    k_fold_df['AUC'].append(roc_auc_score(y_score, y_hat_probs, average='weighted'))
+                    roc_curves.append((_val_roc_fpr, _val_roc_tpr))
+                else:
+                    _roc_auc = multiclass_roc(3, test_y, y_score, clf, experiment_name)
+                    k_fold_df['AUC 0'].append(_roc_auc[0])
+                    k_fold_df['AUC 1'].append(_roc_auc[1])
+                    k_fold_df['AUC 2'].append(_roc_auc[2])
+            pd.DataFrame(k_fold_df).to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
+            if binary:
+                for i in range(0, len(roc_curves)):
+                    plt.plot(roc_curves[0], roc_curves[1])
+                plt.ylabel('True Positive Rate')
+                plt.xlabel('False Positive Rate')
+                plt.legend(loc=4)
+                fig = plt.gcf()
+                fig.set_size_inches(10, 7)
+                plt.title(f"{str(clf)} Mean AUC: {np.mean(k_fold_df['AUC'])}")
+                plt.savefig(os.path.join('results', str(experiment_name), f'{experiment_name}_{str(clf)[0:5]}_roc.png'))
+                plt.clf()
 
 
 def write_results(val_results, experiment_name, binary=True):
