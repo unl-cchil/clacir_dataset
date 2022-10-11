@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn import metrics
 from sklearn.cluster import KMeans
-from sklearn.impute import SimpleImputer
+from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
 
@@ -57,8 +57,11 @@ def binarize_dataset(dataset, labels):
 
 
 def remove_nan(dataset):
+    imp = KNNImputer(missing_values=np.nan, n_neighbors=10, weights='distance', copy=False)
     for x in dataset:
-        np.nan_to_num(x, nan=0, posinf=0, neginf=0, copy=False)
+        inf_indx = np.isinf(x)
+        x[inf_indx] = np.nan
+        imp.fit_transform(x)
 
 
 def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
@@ -72,8 +75,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     else:
         subject_data, annotations = load_csv_dataset('datasets/case_raw')
         # Initialize return lists
-        windowed_train_data = []
-        windowed_train_labels = []
+        windowed_data = []
+        windowed_labels = []
         # Initialize subject lists
         subject_data_list = None
         subject_label_list = None
@@ -83,19 +86,14 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         eda_window_size = 1000.0 * window_size
         temp_window_size = 1000.0 * window_size
         label_window_size = 250.0 * window_size
-        # Segment dataset types
-        train_samples = int(np.round(len(subject_data) * train_portion))
-        test_samples = int(np.round(len(subject_data) * test_portion))
-        dev_samples = int(np.round(len(subject_data) * dev_portion))
-        print("Train Samples:", train_samples, "| Test Samples:", test_samples, "| Dev Samples:", dev_samples)
         # Iterate through the dataset types
         print("Beginning sample processing...")
-        for train in range(0, len(subject_data)):
-            print("Processing subject number:", train)
-            bvp_generator = sp.split_set(subject_data[train][1], bvp_window_size, 250)
-            eda_generator = sp.split_set(subject_data[train][2], eda_window_size, 250)
-            temp_generator = sp.split_set(subject_data[train][3], temp_window_size, 250)
-            label_generator = sp.split_set(annotations[train][4], label_window_size, 75)
+        for subject in range(0, len(subject_data)):
+            print("Processing subject number:", subject)
+            bvp_generator = sp.split_set(subject_data[subject][1], bvp_window_size, 1000)
+            eda_generator = sp.split_set(subject_data[subject][2], eda_window_size, 1000)
+            temp_generator = sp.split_set(subject_data[subject][3], temp_window_size, 1000)
+            label_generator = sp.split_set(annotations[subject][4], label_window_size, 250)
             for bvp, eda, temp, label in zip(bvp_generator, eda_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
@@ -113,23 +111,21 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                     else:
                         subject_label_list = np.vstack((subject_label_list, np.array(window_label)))
                     window_data = []
-            windowed_train_data.append(subject_data_list)
-            windowed_train_labels.append(subject_label_list)
+            windowed_data.append(subject_data_list)
+            windowed_labels.append(subject_label_list)
             subject_data_list = None
             subject_label_list = None
 
-        datasets_array = windowed_train_data
-        labels_array = windowed_train_labels
-
-        labels_array[0][0] = 0.0
-        datasets_array[0][0] = 0.0
+        datasets_array = windowed_data
+        labels_array = windowed_labels
 
         if write_pickle:
             print("Currently pickling CASE dataset...\n")
             with open(f'datasets/case_processed/{dataset_name}.pkl', 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
-    # remove_nan(datasets_array)
+
+    remove_nan(datasets_array)
     # datasets_array, labels_array = trim_dataset(datasets_array, labels_array)
     # datasets_array = normalize_dataset(datasets_array)
     # datasets_array, labels_array = shuffle(datasets_array, labels_array, random_state=1)

@@ -1,17 +1,16 @@
+import copy
 import csv
 import glob
+import os
 import pickle
+
 import numpy as np
 import scipy.signal as signal
-from sklearn import preprocessing
-from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.impute import KNNImputer
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils import shuffle
 
 import signal_processing as sp
-import os
 from inferencing import get_e4_features
-import copy
 
 
 def get_e4_labels(subject_labels):
@@ -65,7 +64,7 @@ def binarize_dataset(dataset, labels):
 
 
 def remove_nan(dataset):
-    imp = SimpleImputer(missing_values=np.nan, strategy='most_frequent', copy=False)
+    imp = KNNImputer(missing_values=np.nan, n_neighbors=10, weights='distance', copy=False)
     for x in dataset:
         inf_indx = np.isinf(x)
         x[inf_indx] = np.nan
@@ -100,8 +99,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
     else:
         subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
         # Initialize return lists
-        windowed_train_data = []
-        windowed_train_labels = []
+        windowed_data = []
+        windowed_labels = []
         # Initialize subject lists
         subject_data_list = None
         subject_label_list = None
@@ -112,21 +111,15 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         eda_window_size = 4.0 * window_size
         temp_window_size = 4.0 * window_size
         label_window_size = 700.0 * window_size
-        feature_count = 0
-        # Segment dataset types
-        train_samples = int(np.round(len(subject_data) * train_portion))
-        test_samples = int(np.round(len(subject_data) * test_portion))
-        dev_samples = int(np.round(len(subject_data) * dev_portion))
-        print("Train Samples:", train_samples, "| Test Samples:", test_samples, "| Dev Samples:", dev_samples)
         # Iterate through the dataset types
         print("Beginning sample processing...")
-        for train in range(0, len(subject_data)):
-            print("Processing subject number:", train)
-            bvp_generator = sp.split_set(subject_data[train]['signal']['wrist']['BVP'], bvp_window_size, 64.0 / 4)
-            eda_generator = sp.split_set(subject_data[train]['signal']['wrist']['EDA'], eda_window_size, 4.0 / 4)
-            acc_generator = sp.split_set(subject_data[train]['signal']['wrist']['ACC'], acc_window_size, 32.0 / 4)
-            temp_generator = sp.split_set(subject_data[train]['signal']['wrist']['TEMP'], temp_window_size, 4.0 / 4)
-            label_generator = sp.split_set(subject_data[train]['label'], label_window_size, 700.0 / 4)
+        for subject in range(0, len(subject_data)):
+            print("Processing subject number:", subject)
+            bvp_generator = sp.split_set(subject_data[subject]['signal']['wrist']['BVP'], bvp_window_size, 64.0)
+            eda_generator = sp.split_set(subject_data[subject]['signal']['wrist']['EDA'], eda_window_size, 4.0)
+            acc_generator = sp.split_set(subject_data[subject]['signal']['wrist']['ACC'], acc_window_size, 32.0)
+            temp_generator = sp.split_set(subject_data[subject]['signal']['wrist']['TEMP'], temp_window_size, 4.0)
+            label_generator = sp.split_set(subject_data[subject]['label'], label_window_size, 700.0)
             for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
@@ -146,16 +139,13 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                     else:
                         subject_label_list = np.vstack((subject_label_list, np.array(window_label)))
                     window_data = []
-            windowed_train_data.append(subject_data_list)
-            windowed_train_labels.append(subject_label_list)
+            windowed_data.append(subject_data_list)
+            windowed_labels.append(subject_label_list)
             subject_data_list = None
             subject_label_list = None
 
-        datasets_array = windowed_train_data
-        labels_array = windowed_train_labels
-
-        labels_array[0][0] = 0.0
-        datasets_array[0][0] = 0.0
+        datasets_array = windowed_data
+        labels_array = windowed_labels
 
         if write_pickle:
             print("Currently pickling WESAD dataset...\n")
@@ -163,7 +153,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
 
-    # remove_nan(datasets_array)
+    remove_nan(datasets_array)
     # datasets_array, labels_array = trim_data(datasets_array, labels_array)
     # datasets_array = normalize_dataset(datasets_array)
     # datasets_array, labels_array = shuffle(datasets_array, labels_array, random_state=1)
@@ -221,6 +211,7 @@ def load_wesad_dataset(parent_dir):
         for filename in datasets_from_dir:
             print("Processing file: " + filename + "...")
             unpickled_datasets.append(pickle.load(open(filename, mode='rb'), encoding='latin1'))
+            break
     else:
         raise ValueError("No WESAD datasets found!")
 

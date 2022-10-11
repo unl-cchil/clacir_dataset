@@ -373,43 +373,46 @@ def get_metrics(datasets, labels, dev_data, dev_labels):
 
 # Generate datasets
 window_size = 5
-clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
-                                                                             dataset_name='clasir_no_acc')
-wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True,
-                                                                          dataset_name='wesad_no_acc')
+# wesad_multi, wesad_binary =
+wesad.windowed_feature_extraction(window_size)
+# clasir_multi, clasir_binary =
+clasir.windowed_feature_extraction(window_size)
 
-wesad_multi, wesad_binary = wesad.windowed_feature_extraction(window_size)
-clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
+# clasir_noacc_multi, clasir_noacc_binary =
+clasir.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='clasir_no_acc')
+# wesad_noacc_multi, wesad_noacc_binary =
+wesad.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='wesad_no_acc')
 
-case_multi, case_binary = case.windowed_feature_extraction(window_size)
+# case_multi, case_binary =
+case.windowed_feature_extraction(window_size)
 
-case_clasir_binary = [clasir_noacc_binary[0] + case_binary[0],
-                      clasir_noacc_binary[1] + case_binary[1]]
-case_clasir_multi = [clasir_noacc_multi[0] + case_multi[0],
-                     clasir_noacc_multi[1] + case_multi[1]]
-clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
-                       clasir_noacc_binary[1] + wesad_noacc_binary[1]]
-clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
-                      clasir_noacc_multi[1] + wesad_noacc_multi[1]]
-case_wesad_binary = [wesad_noacc_binary[0] + case_multi[0],
-                     wesad_noacc_binary[1] + case_multi[1]]
-case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
-                    wesad_noacc_multi[1] + case_multi[1]]
-
-full_dataset_binary = [
-    clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
-    clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
-]
-
-full_dataset_multi = [
-    clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
-    clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
-]
+# case_clasir_binary = [clasir_noacc_binary[0] + case_binary[0],
+#                       clasir_noacc_binary[1] + case_binary[1]]
+# case_clasir_multi = [clasir_noacc_multi[0] + case_multi[0],
+#                      clasir_noacc_multi[1] + case_multi[1]]
+# clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
+#                        clasir_noacc_binary[1] + wesad_noacc_binary[1]]
+# clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
+#                       clasir_noacc_multi[1] + wesad_noacc_multi[1]]
+# case_wesad_binary = [wesad_noacc_binary[0] + case_multi[0],
+#                      wesad_noacc_binary[1] + case_multi[1]]
+# case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
+#                     wesad_noacc_multi[1] + case_multi[1]]
+#
+# full_dataset_binary = [
+#     clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
+#     clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
+# ]
+#
+# full_dataset_multi = [
+#     clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
+#     clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
+# ]
 # Perform classic benchmarking with SciKit Learn built in models on each dataset
 # wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task')
 # wesad_multi_alone = train_fresh_models(wesad_multi, 'WESAD Multiclass Task', binary=False)
 
-clasir_binary_alone = train_fresh_models(clasir_wesad_multi, 'cLASIr Binary Task')
+# clasir_binary_alone = train_fresh_models(clasir_wesad_multi, 'cLASIr Binary Task')
 # clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', binary=False)
 
 # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
