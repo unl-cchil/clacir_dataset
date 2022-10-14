@@ -141,12 +141,10 @@ def train_fresh_models(datasets, experiment_name, binary=True):
 # Generate datasets
 window_size = 5
 wesad_multi, wesad_binary = wesad.windowed_feature_extraction(window_size)
+wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='wesad_no_acc')
 
 clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
-
 clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='clasir_no_acc')
-
-wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='wesad_no_acc')
 
 case_multi, case_binary = case.windowed_feature_extraction(window_size)
 
@@ -167,11 +165,11 @@ full_dataset_binary = [
     clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
     clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
 ]
-
 full_dataset_multi = [
     clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
     clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
 ]
+
 # Perform classic benchmarking with SciKit Learn built in models on each dataset
 wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task')
 wesad_multi_alone = train_fresh_models(wesad_multi, 'WESAD Multiclass Task', binary=False)
@@ -206,14 +204,28 @@ evaluate_pretrained_models(case_binary_alone, clasir_wesad_binary, "CASE on Othe
 evaluate_pretrained_models(case_multi_alone, clasir_wesad_multi, "CASE on Others, Multi", binary=False)
 
 # Perform domain adaptation using dataset mixing, benchmark in the same way
-train_fresh_models(case_clasir_binary, "WESAD Transfer, Binary")
-train_fresh_models(case_clasir_multi, "WESAD Transfer, Multi", binary=False)
+case_clasir_mix_binary = train_fresh_models(case_clasir_binary, "CASE cLASIr Transfer, Binary")
+case_clasir_mix_multi = train_fresh_models(case_clasir_multi, "CASE cLASIr Transfer, Multi", binary=False)
 
-train_fresh_models(case_wesad_binary, "cLASIr Transfer, Binary")
-train_fresh_models(case_wesad_multi, "cLASIr Transfer, Multi", binary=False)
+case_wesad_mix_binary = train_fresh_models(case_wesad_binary, "CASE WESAD Transfer, Binary")
+case_wesad_mix_multi = train_fresh_models(case_wesad_multi, "CASE WESAD Transfer, Multi", binary=False)
 
-train_fresh_models(clasir_wesad_binary, "CASE Transfer, Binary")
-train_fresh_models(clasir_wesad_multi, "CASE Transfer, Multi", binary=False)
+clasir_wesad_mix_binary = train_fresh_models(clasir_wesad_binary, "cLASIr WESAD Transfer, Binary")
+clasir_wesad_mix_multi = train_fresh_models(clasir_wesad_multi, "cLASIr WESAD Transfer, Multi", binary=False)
+
+# Evaluate improved domain shift
+evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_binary, "CASE cLASIr on Others, Binary")
+evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_multi, "CASE cLASIr on Others, Multi", binary=False)
+
+evaluate_pretrained_models(case_wesad_mix_binary, clasir_noacc_binary, "CASE WESAD on Others, Binary")
+evaluate_pretrained_models(case_wesad_mix_multi, clasir_noacc_multi, "CASE WESAD on Others, Multi", binary=False)
+
+evaluate_pretrained_models(clasir_wesad_mix_binary, case_binary, "cLASIr WESAD on Others, Binary")
+evaluate_pretrained_models(clasir_wesad_mix_multi, case_multi, "cLASIr WESAD on Others, Multi", binary=False)
+
+# Evaluate using all data
+full_mix_binary = train_fresh_models(full_dataset_binary, "Full Dataset, Binary")
+full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi")
 
 # Perform domain adaptation using a trainable transform layer, benchmark in the same way
 # https://stackoverflow.com/a/47520976
