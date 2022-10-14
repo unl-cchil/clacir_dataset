@@ -66,10 +66,10 @@ def normalize_dataset(dataset):
 
 def remove_nan(dataset):
     imp = KNNImputer(missing_values=np.nan, n_neighbors=10, weights='distance', copy=False)
-    for x in dataset:
-        inf_indx = np.isinf(x)
-        x[inf_indx] = np.nan
-        imp.fit_transform(x)
+    for i in range(0, len(dataset)):
+        inf_indx = np.isinf(dataset[i])
+        dataset[i][inf_indx] = np.nan
+        dataset[i] = imp.fit_transform(dataset[i])
 
 
 def trim_data(dataset, labels):
@@ -93,8 +93,7 @@ def binarize_dataset(dataset, labels):
     return binary_dataset, binary_labels
 
 
-def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
-                                write_pickle=True, exclude_acc=False, dataset_name="clasir"):
+def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False, dataset_name="clasir"):
     print("Collecting cLASIr dataset...")
     if os.path.exists(f'datasets/clasir_processed/{dataset_name}.pkl'):
         print("Pickled cLASIr dataset exists...\n")
@@ -158,9 +157,8 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
 
-    # remove_nan(datasets_array)
-    # datasets_array, labels_array = trim_data(datasets_array, labels_array)
+    remove_nan(datasets_array)
+    datasets_array, labels_array = trim_data(datasets_array, labels_array)
     # datasets_array = normalize_dataset(datasets_array)
-    # datasets_array, labels_array = shuffle(datasets_array, labels_array, random_state=1)
-    # binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
-    # return (datasets_array, labels_array), (binary_dataset, binary_labels)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)

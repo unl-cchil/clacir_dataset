@@ -64,32 +64,14 @@ def binarize_dataset(dataset, labels):
 
 
 def remove_nan(dataset):
-    imp = KNNImputer(missing_values=np.nan, n_neighbors=10, weights='distance', copy=False)
-    for x in dataset:
-        inf_indx = np.isinf(x)
-        x[inf_indx] = np.nan
-        imp.fit_transform(x)
+    imp = KNNImputer()
+    for i in range(0, len(dataset)):
+        inf_indx = np.isinf(dataset[i])
+        dataset[i][inf_indx] = np.nan
+        dataset[i] = imp.fit_transform(dataset[i])
 
 
-def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
-                                write_pickle=True, exclude_acc=False, dataset_name="wesad"):
-    """Function to run through the entire WESAD dataset and extract the features.
-    Parameters
-    :param window_size: float
-        Window size in seconds, such as one second = 1.0
-    :param train_portion: float
-        Portion of dataset to be used for training, default = 0.7
-    :param test_portion: float
-        Portion of dataset to be used for testing, default = 0.2
-    :param dev_portion: float
-        Portion of dataset to be used for development, default = 0.1
-    :param write_csv: bool
-        Indicate if features should be written out to CSV file
-    :param write_pickle: bool
-        Indicate if features should be written out to pickle file
-    :return: list
-        List of features
-    """
+def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False, dataset_name="wesad"):
     print("Collecting WESAD dataset...")
     if os.path.exists(f'datasets/wesad_processed/{dataset_name}.pkl'):
         print("Pickled WESAD dataset exists...\n")
@@ -154,11 +136,10 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                              "labels": labels_array}, f)
 
     remove_nan(datasets_array)
-    # datasets_array, labels_array = trim_data(datasets_array, labels_array)
+    datasets_array, labels_array = trim_data(datasets_array, labels_array)
     # datasets_array = normalize_dataset(datasets_array)
-    # datasets_array, labels_array = shuffle(datasets_array, labels_array, random_state=1)
-    # binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
-    # return (datasets_array, labels_array), (binary_dataset, binary_labels)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)
 
 
 def save_dataset(subject_data):
@@ -211,7 +192,6 @@ def load_wesad_dataset(parent_dir):
         for filename in datasets_from_dir:
             print("Processing file: " + filename + "...")
             unpickled_datasets.append(pickle.load(open(filename, mode='rb'), encoding='latin1'))
-            break
     else:
         raise ValueError("No WESAD datasets found!")
 

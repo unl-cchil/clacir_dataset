@@ -58,14 +58,13 @@ def binarize_dataset(dataset, labels):
 
 def remove_nan(dataset):
     imp = KNNImputer(missing_values=np.nan, n_neighbors=10, weights='distance', copy=False)
-    for x in dataset:
-        inf_indx = np.isinf(x)
-        x[inf_indx] = np.nan
-        imp.fit_transform(x)
+    for i in range(0, len(dataset)):
+        inf_indx = np.isinf(dataset[i])
+        dataset[i][inf_indx] = np.nan
+        dataset[i] = imp.fit_transform(dataset[i])
 
 
-def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2, dev_portion=0.1,
-                                write_pickle=True, dataset_name="case"):
+def windowed_feature_extraction(window_size, write_pickle=True, dataset_name="case"):
     print("Collecting CASE dataset...")
     if os.path.exists(f'datasets/case_processed/{dataset_name}.pkl'):
         print("Pickled CASE dataset exists...\n")
@@ -85,7 +84,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
         bvp_window_size = 1000.0 * window_size
         eda_window_size = 1000.0 * window_size
         temp_window_size = 1000.0 * window_size
-        label_window_size = 250.0 * window_size
+        label_window_size = 20.0 * window_size
         # Iterate through the dataset types
         print("Beginning sample processing...")
         for subject in range(0, len(subject_data)):
@@ -93,7 +92,7 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
             bvp_generator = sp.split_set(subject_data[subject][1], bvp_window_size, 1000)
             eda_generator = sp.split_set(subject_data[subject][2], eda_window_size, 1000)
             temp_generator = sp.split_set(subject_data[subject][3], temp_window_size, 1000)
-            label_generator = sp.split_set(annotations[subject][4], label_window_size, 250)
+            label_generator = sp.split_set(annotations[subject][4], label_window_size, 20)
             for bvp, eda, temp, label in zip(bvp_generator, eda_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
@@ -126,11 +125,10 @@ def windowed_feature_extraction(window_size, train_portion=0.7, test_portion=0.2
                              "labels": labels_array}, f)
 
     remove_nan(datasets_array)
-    # datasets_array, labels_array = trim_dataset(datasets_array, labels_array)
+    datasets_array, labels_array = trim_dataset(datasets_array, labels_array)
     # datasets_array = normalize_dataset(datasets_array)
-    # datasets_array, labels_array = shuffle(datasets_array, labels_array, random_state=1)
-    # binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
-    # return (datasets_array, labels_array), (binary_dataset, binary_labels)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)
 
 
 def load_csv_dataset(parent_dir):
