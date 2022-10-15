@@ -23,6 +23,27 @@ import clasir_interfacing as clasir
 import wesad_interfacing as wesad
 
 
+def stratifiedgroupkfold_test():
+    clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
+    groups = []
+    datasets = clasir_binary
+    for i in range(0, len(datasets[0])):
+        group = np.ndarray(len(datasets[0][i]))
+        group[:] = i
+        groups.extend(group)
+    k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1)
+    x = np.vstack(datasets[0])
+    y = np.vstack(datasets[1]).ravel()
+    for train_ix, test_ix in k_fold.split(x, y, groups=groups):
+        train_sort = sorted(set(np.array(groups)[train_ix]))
+        test_sort = sorted(set(np.array(groups)[test_ix]))
+        print(f"Overlap: {np.any(train_sort == test_sort)}")
+        print(f"Train Sorted: {np.all(sorted(train_ix) == train_ix)}")
+        print(f"Test Sorted: {np.all(sorted(test_ix) == test_ix)}")
+        print(f"Train / Test Percentage: {(len(train_ix) / len(x))*100:.2f} % / {(len(test_ix) / len(x))*100:.2f} %")
+        print()
+
+
 def domain_transfer_train():
     pass
 
@@ -60,21 +81,22 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
         pd.DataFrame(model_df).to_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
     clf_results = {f"Experiment": experiment_name}
     results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
-    for _, row in results_df.iterrows():
-        clf_name = ''.join(filter(str.isupper, row['Model'].split(' ')[-1].split('(')[0]))
+    clf_names = ['LDA', 'KNC', 'DTC', 'RFC']
+    for i, row in results_df.iterrows():
+        clf_name = clf_names[i]
         if binary:
             clf_results.update({
-                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f}",
-                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f}",
-                f"{clf_name} AUC": f"{row['AUC'] * 100:.2f}"
+                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f} %",
+                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f} %",
+                f"{clf_name} AUC": f"{row['AUC'] * 100:.2f} %"
             })
         else:
             clf_results.update({
-                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f}",
-                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f}",
-                f"{clf_name} AUC 0": f"{row['AUC 0'] * 100:.2f}",
-                f"{clf_name} AUC 1": f"{row['AUC 1'] * 100:.2f}",
-                f"{clf_name} AUC 2": f"{row['AUC 2'] * 100:.2f}"
+                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f} %",
+                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f} %",
+                f"{clf_name} AUC 0": f"{row['AUC 0'] * 100:.2f} %",
+                f"{clf_name} AUC 1": f"{row['AUC 1'] * 100:.2f} %",
+                f"{clf_name} AUC 2": f"{row['AUC 2'] * 100:.2f} %"
             })
     return report_df.append(clf_results, ignore_index=True)
 
@@ -166,114 +188,115 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
     return report_df, best_models
 
 
-# Generate datasets
-window_size = 5
-wesad_multi, wesad_binary = wesad.windowed_feature_extraction(window_size)
-wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='wesad_no_acc')
+if __name__ == '__main__':
+    # Generate datasets
+    window_size = 5
+    wesad_multi, wesad_binary = wesad.windowed_feature_extraction(window_size)
+    wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='wesad_no_acc')
 
-clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
-clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='clasir_no_acc')
+    clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
+    clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True, dataset_name='clasir_no_acc')
 
-case_multi, case_binary = case.windowed_feature_extraction(window_size)
+    case_multi, case_binary = case.windowed_feature_extraction(window_size)
 
-case_clasir_binary = [clasir_noacc_binary[0] + case_binary[0],
-                      clasir_noacc_binary[1] + case_binary[1]]
-case_clasir_multi = [clasir_noacc_multi[0] + case_multi[0],
-                     clasir_noacc_multi[1] + case_multi[1]]
-clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
-                       clasir_noacc_binary[1] + wesad_noacc_binary[1]]
-clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
-                      clasir_noacc_multi[1] + wesad_noacc_multi[1]]
-case_wesad_binary = [wesad_noacc_binary[0] + case_binary[0],
-                     wesad_noacc_binary[1] + case_binary[1]]
-case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
-                    wesad_noacc_multi[1] + case_multi[1]]
+    case_clasir_binary = [clasir_noacc_binary[0] + case_binary[0],
+                          clasir_noacc_binary[1] + case_binary[1]]
+    case_clasir_multi = [clasir_noacc_multi[0] + case_multi[0],
+                         clasir_noacc_multi[1] + case_multi[1]]
+    clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
+                           clasir_noacc_binary[1] + wesad_noacc_binary[1]]
+    clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
+                          clasir_noacc_multi[1] + wesad_noacc_multi[1]]
+    case_wesad_binary = [wesad_noacc_binary[0] + case_binary[0],
+                         wesad_noacc_binary[1] + case_binary[1]]
+    case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
+                        wesad_noacc_multi[1] + case_multi[1]]
 
-full_dataset_binary = [
-    clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
-    clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
-]
-full_dataset_multi = [
-    clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
-    clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
-]
+    full_dataset_binary = [
+        clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
+        clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
+    ]
+    full_dataset_multi = [
+        clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
+        clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
+    ]
 
-# Collect data into DataFrame
-multi_results_df = pd.DataFrame()
-binary_results_df = pd.DataFrame()
+    # Collect data into DataFrame
+    multi_results_df = pd.DataFrame()
+    binary_results_df = pd.DataFrame()
 
-multi_eval_df = pd.DataFrame()
-binary_eval_df = pd.DataFrame()
+    multi_eval_df = pd.DataFrame()
+    binary_eval_df = pd.DataFrame()
 
-# Perform classic benchmarking with SciKit Learn built in models on each dataset
-binary_results_df, wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task', binary_results_df)
-multi_results_df, wesad_multi_alone = train_fresh_models(wesad_multi, 'WESAD Multiclass Task', multi_results_df, binary=False)
+    # Perform classic benchmarking with SciKit Learn built in models on each dataset
+    binary_results_df, wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task', binary_results_df)
+    multi_results_df, wesad_multi_alone = train_fresh_models(wesad_multi, 'WESAD Multiclass Task', multi_results_df, binary=False)
 
-binary_results_df, clasir_binary_alone = train_fresh_models(clasir_binary, 'cLASIr Binary Task', binary_results_df)
-multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', multi_results_df, binary=False)
+    binary_results_df, clasir_binary_alone = train_fresh_models(clasir_binary, 'cLASIr Binary Task', binary_results_df)
+    multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', multi_results_df, binary=False)
 
-# Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
-binary_results_df, wesad_noacc_binary_alone = train_fresh_models(wesad_noacc_binary, 'WESAD Binary Task, No Accelerometer', binary_results_df)
-multi_results_df, wesad_noacc_multi_alone = train_fresh_models(wesad_noacc_multi, 'WESAD Multiclass Task, No Accelerometer', multi_results_df, binary=False)
+    # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
+    binary_results_df, wesad_noacc_binary_alone = train_fresh_models(wesad_noacc_binary, 'WESAD Binary Task, No Accelerometer', binary_results_df)
+    multi_results_df, wesad_noacc_multi_alone = train_fresh_models(wesad_noacc_multi, 'WESAD Multiclass Task, No Accelerometer', multi_results_df, binary=False)
 
-binary_results_df, clasir_noacc_binary_alone = train_fresh_models(clasir_noacc_binary, 'cLASIr Binary Task, No Accelerometer', binary_results_df)
-multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi, 'cLASIr Multiclass Task, No Accelerometer', multi_results_df, binary=False)
+    binary_results_df, clasir_noacc_binary_alone = train_fresh_models(clasir_noacc_binary, 'cLASIr Binary Task, No Accelerometer', binary_results_df)
+    multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi, 'cLASIr Multiclass Task, No Accelerometer', multi_results_df, binary=False)
 
-binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df)
-multi_results_df, case_multi_alone = train_fresh_models(case_multi, 'CASE Multiclass Task', multi_results_df, binary=False)
+    binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df)
+    multi_results_df, case_multi_alone = train_fresh_models(case_multi, 'CASE Multiclass Task', multi_results_df, binary=False)
 
-# Observe domain shift by using best model for each dataset on the other datasets
-multi_eval_df = evaluate_pretrained_models(wesad_multi_alone, clasir_multi, "WESAD on cLASIr, Multi", multi_eval_df, binary=False)
-binary_eval_df = evaluate_pretrained_models(wesad_binary_alone, clasir_binary, "WESAD on cLASIr, Binary", binary_eval_df)
+    # Observe domain shift by using best model for each dataset on the other datasets
+    multi_eval_df = evaluate_pretrained_models(wesad_multi_alone, clasir_multi, "WESAD on cLASIr, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(wesad_binary_alone, clasir_binary, "WESAD on cLASIr, Binary", binary_eval_df)
 
-multi_eval_df = evaluate_pretrained_models(clasir_multi_alone, wesad_multi, "cLASIr on WESAD, Multi", multi_eval_df, binary=False)
-binary_eval_df = evaluate_pretrained_models(clasir_binary_alone, wesad_binary, "cLASIr on WESAD, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(clasir_multi_alone, wesad_multi, "cLASIr on WESAD, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(clasir_binary_alone, wesad_binary, "cLASIr on WESAD, Binary", binary_eval_df)
 
-binary_eval_df = evaluate_pretrained_models(wesad_noacc_binary_alone, case_clasir_binary, "WESAD on Others, Binary", binary_eval_df)
-multi_eval_df = evaluate_pretrained_models(wesad_noacc_multi_alone, case_clasir_multi, "WESAD on Others, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(wesad_noacc_binary_alone, case_clasir_binary, "WESAD on Others, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(wesad_noacc_multi_alone, case_clasir_multi, "WESAD on Others, Multi", multi_eval_df, binary=False)
 
-binary_eval_df = evaluate_pretrained_models(clasir_noacc_binary_alone, case_wesad_binary, "cLASIr on Others, Binary", binary_eval_df)
-multi_eval_df = evaluate_pretrained_models(clasir_noacc_multi_alone, case_wesad_multi, "cLASIr on Others, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(clasir_noacc_binary_alone, case_wesad_binary, "cLASIr on Others, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(clasir_noacc_multi_alone, case_wesad_multi, "cLASIr on Others, Multi", multi_eval_df, binary=False)
 
-binary_eval_df = evaluate_pretrained_models(case_binary_alone, clasir_wesad_binary, "CASE on Others, Binary", binary_eval_df)
-multi_eval_df = evaluate_pretrained_models(case_multi_alone, clasir_wesad_multi, "CASE on Others, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(case_binary_alone, clasir_wesad_binary, "CASE on Others, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(case_multi_alone, clasir_wesad_multi, "CASE on Others, Multi", multi_eval_df, binary=False)
 
-# Perform domain adaptation using dataset mixing, benchmark in the same way
-binary_results_df, case_clasir_mix_binary = train_fresh_models(case_clasir_binary, "CASE cLASIr Transfer, Binary", binary_results_df)
-multi_results_df, case_clasir_mix_multi = train_fresh_models(case_clasir_multi, "CASE cLASIr Transfer, Multi", multi_results_df, binary=False)
+    # Perform domain adaptation using dataset mixing, benchmark in the same way
+    binary_results_df, case_clasir_mix_binary = train_fresh_models(case_clasir_binary, "CASE cLASIr Transfer, Binary", binary_results_df)
+    multi_results_df, case_clasir_mix_multi = train_fresh_models(case_clasir_multi, "CASE cLASIr Transfer, Multi", multi_results_df, binary=False)
 
-binary_results_df, case_wesad_mix_binary = train_fresh_models(case_wesad_binary, "CASE WESAD Transfer, Binary", binary_results_df)
-multi_results_df, case_wesad_mix_multi = train_fresh_models(case_wesad_multi, "CASE WESAD Transfer, Multi", multi_results_df, binary=False)
+    binary_results_df, case_wesad_mix_binary = train_fresh_models(case_wesad_binary, "CASE WESAD Transfer, Binary", binary_results_df)
+    multi_results_df, case_wesad_mix_multi = train_fresh_models(case_wesad_multi, "CASE WESAD Transfer, Multi", multi_results_df, binary=False)
 
-binary_results_df, clasir_wesad_mix_binary = train_fresh_models(clasir_wesad_binary, "cLASIr WESAD Transfer, Binary", binary_results_df)
-multi_results_df, clasir_wesad_mix_multi = train_fresh_models(clasir_wesad_multi, "cLASIr WESAD Transfer, Multi", multi_results_df, binary=False)
+    binary_results_df, clasir_wesad_mix_binary = train_fresh_models(clasir_wesad_binary, "cLASIr WESAD Transfer, Binary", binary_results_df)
+    multi_results_df, clasir_wesad_mix_multi = train_fresh_models(clasir_wesad_multi, "cLASIr WESAD Transfer, Multi", multi_results_df, binary=False)
 
-# Evaluate improved domain shift
-binary_eval_df = evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_binary, "CASE cLASIr on Others, Binary", binary_eval_df)
-multi_eval_df = evaluate_pretrained_models(case_clasir_mix_multi, wesad_noacc_multi, "CASE cLASIr on Others, Multi", multi_eval_df, binary=False)
+    # Evaluate improved domain shift
+    binary_eval_df = evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_binary, "CASE cLASIr on Others, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(case_clasir_mix_multi, wesad_noacc_multi, "CASE cLASIr on Others, Multi", multi_eval_df, binary=False)
 
-binary_eval_df = evaluate_pretrained_models(case_wesad_mix_binary, clasir_noacc_binary, "CASE WESAD on Others, Binary", binary_eval_df)
-multi_eval_df = evaluate_pretrained_models(case_wesad_mix_multi, clasir_noacc_multi, "CASE WESAD on Others, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(case_wesad_mix_binary, clasir_noacc_binary, "CASE WESAD on Others, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(case_wesad_mix_multi, clasir_noacc_multi, "CASE WESAD on Others, Multi", multi_eval_df, binary=False)
 
-binary_eval_df = evaluate_pretrained_models(clasir_wesad_mix_binary, case_binary, "cLASIr WESAD on Others, Binary", binary_eval_df)
-multi_eval_df = evaluate_pretrained_models(clasir_wesad_mix_multi, case_multi, "cLASIr WESAD on Others, Multi", multi_eval_df, binary=False)
+    binary_eval_df = evaluate_pretrained_models(clasir_wesad_mix_binary, case_binary, "cLASIr WESAD on Others, Binary", binary_eval_df)
+    multi_eval_df = evaluate_pretrained_models(clasir_wesad_mix_multi, case_multi, "cLASIr WESAD on Others, Multi", multi_eval_df, binary=False)
 
-# Evaluate using all data, 34 classification tasks total
-binary_results_df, full_mix_binary = train_fresh_models(full_dataset_binary, "Full Dataset, Binary", binary_results_df)
-multi_results_df, full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi", multi_results_df, binary=False)
+    # Evaluate using all data, 34 classification tasks total
+    binary_results_df, full_mix_binary = train_fresh_models(full_dataset_binary, "Full Dataset, Binary", binary_results_df)
+    multi_results_df, full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi", multi_results_df, binary=False)
 
-# Prepare and save results
-multi_results_df.set_index('Experiment', inplace=True)
-multi_results_df.to_excel(os.path.join('results', 'Multiclass Training Results.xlsx'))
+    # Prepare and save results
+    multi_results_df.set_index('Experiment', inplace=True)
+    multi_results_df.to_excel(os.path.join('results', 'Multiclass Training Results.xlsx'))
 
-binary_results_df.set_index('Experiment', inplace=True)
-binary_results_df.to_excel(os.path.join('results', 'Binary Training Results.xlsx'))
+    binary_results_df.set_index('Experiment', inplace=True)
+    binary_results_df.to_excel(os.path.join('results', 'Binary Training Results.xlsx'))
 
-multi_eval_df.set_index('Experiment', inplace=True)
-multi_eval_df.to_excel(os.path.join('results', 'Multiclass Evaluation Results.xlsx'))
+    multi_eval_df.set_index('Experiment', inplace=True)
+    multi_eval_df.to_excel(os.path.join('results', 'Multiclass Evaluation Results.xlsx'))
 
-binary_eval_df.set_index('Experiment', inplace=True)
-binary_eval_df.to_excel(os.path.join('results', 'Binary Evaluation Results.xlsx'))
+    binary_eval_df.set_index('Experiment', inplace=True)
+    binary_eval_df.to_excel(os.path.join('results', 'Binary Evaluation Results.xlsx'))
 
-# Perform domain adaptation using a trainable transform layer, benchmark in the same way
-# https://stackoverflow.com/a/47520976
+    # Perform domain adaptation using a trainable transform layer, benchmark in the same way
+    # https://stackoverflow.com/a/47520976
