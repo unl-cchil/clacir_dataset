@@ -37,21 +37,17 @@ def stratifiedgroupkfold_test():
     for train_ix, test_ix in k_fold.split(x, y, groups=groups):
         train_sort = sorted(set(np.array(groups)[train_ix]))
         test_sort = sorted(set(np.array(groups)[test_ix]))
-        print(f"Overlap: {np.any(train_sort == test_sort)}")
+        print(f"Overlapping Identities: {np.any(train_sort == test_sort)}")
         print(f"Train Sorted: {np.all(sorted(train_ix) == train_ix)}")
+        print(f"Training Identities: {len(train_sort)}")
         print(f"Test Sorted: {np.all(sorted(test_ix) == test_ix)}")
+        print(f"Testing Identities: {len(test_sort)}")
         print(f"Train / Test Percentage: {(len(train_ix) / len(x))*100:.2f} % / {(len(test_ix) / len(x))*100:.2f} %")
         print()
 
 
 def domain_transfer_train():
     pass
-
-
-def train_pretrained_models(clf, datasets, experiment_name, binary=True):
-    if not os.path.exists(os.path.join('results', str(experiment_name))):
-        # os.mkdir(os.path.join('results', str(experiment_name)))
-        pass
 
 
 def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binary=True):
