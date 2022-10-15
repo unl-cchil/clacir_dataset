@@ -6,7 +6,7 @@ import pickle
 
 import numpy as np
 import scipy.signal as signal
-from sklearn.impute import KNNImputer
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
 import signal_processing as sp
@@ -64,7 +64,7 @@ def binarize_dataset(dataset, labels):
 
 
 def remove_nan(dataset):
-    imp = KNNImputer()
+    imp = SimpleImputer(missing_values=np.nan, strategy='constant', fill_value=0)
     for i in range(0, len(dataset)):
         inf_indx = np.isinf(dataset[i])
         dataset[i][inf_indx] = np.nan
@@ -137,7 +137,6 @@ def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=Fals
 
     remove_nan(datasets_array)
     datasets_array, labels_array = trim_data(datasets_array, labels_array)
-    # datasets_array = normalize_dataset(datasets_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
     return (datasets_array, labels_array), (binary_dataset, binary_labels)
 

@@ -65,7 +65,7 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, binary=True):
                     model_df[f'AUC {i}'].append(roc_auc)
             model_df['Accuracy'].append(accuracy_score(y_test, y_hat))
             model_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
-            model_df['Models'].append(str(clf))
+            model_df['Model'].append(str(clf))
         pd.DataFrame(model_df).to_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
 
 
@@ -88,7 +88,7 @@ def train_fresh_models(datasets, experiment_name, binary=True):
                        KNeighborsClassifier(9),
                        DecisionTreeClassifier(min_samples_split=60, random_state=rng),
                        RandomForestClassifier(min_samples_split=60, n_estimators=100, random_state=rng),
-                       AdaBoostClassifier(n_estimators=50, base_estimator=DecisionTreeClassifier(min_samples_split=60), random_state=rng),
+                       # AdaBoostClassifier(n_estimators=50, base_estimator=DecisionTreeClassifier(min_samples_split=60), random_state=rng),
                        # SVC(kernel="linear", C=0.025, probability=True),
                        # SVC(gamma=2, C=1, probability=True),
                        # GaussianProcessClassifier(1.0 * RBF(1.0)),
@@ -156,8 +156,8 @@ clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
                        clasir_noacc_binary[1] + wesad_noacc_binary[1]]
 clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
                       clasir_noacc_multi[1] + wesad_noacc_multi[1]]
-case_wesad_binary = [wesad_noacc_binary[0] + case_multi[0],
-                     wesad_noacc_binary[1] + case_multi[1]]
+case_wesad_binary = [wesad_noacc_binary[0] + case_binary[0],
+                     wesad_noacc_binary[1] + case_binary[1]]
 case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
                     wesad_noacc_multi[1] + case_multi[1]]
 
@@ -215,7 +215,7 @@ clasir_wesad_mix_multi = train_fresh_models(clasir_wesad_multi, "cLASIr WESAD Tr
 
 # Evaluate improved domain shift
 evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_binary, "CASE cLASIr on Others, Binary")
-evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_multi, "CASE cLASIr on Others, Multi", binary=False)
+evaluate_pretrained_models(case_clasir_mix_multi, wesad_noacc_multi, "CASE cLASIr on Others, Multi", binary=False)
 
 evaluate_pretrained_models(case_wesad_mix_binary, clasir_noacc_binary, "CASE WESAD on Others, Binary")
 evaluate_pretrained_models(case_wesad_mix_multi, clasir_noacc_multi, "CASE WESAD on Others, Multi", binary=False)
@@ -223,7 +223,7 @@ evaluate_pretrained_models(case_wesad_mix_multi, clasir_noacc_multi, "CASE WESAD
 evaluate_pretrained_models(clasir_wesad_mix_binary, case_binary, "cLASIr WESAD on Others, Binary")
 evaluate_pretrained_models(clasir_wesad_mix_multi, case_multi, "cLASIr WESAD on Others, Multi", binary=False)
 
-# Evaluate using all data
+# Evaluate using all data, 34 classification tasks total
 full_mix_binary = train_fresh_models(full_dataset_binary, "Full Dataset, Binary")
 full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi")
 
