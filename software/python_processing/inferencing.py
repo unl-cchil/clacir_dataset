@@ -1,16 +1,12 @@
+import numpy as np
 from flirt.eda.feature_calculation import __cvx_eda
 from flirt.hrv.feature_calculation import StatFeatures
 from flirt.hrv.features.fd_features import FdFeatures
 from flirt.hrv.features.nl_features import NonLinearFeatures
 from flirt.hrv.features.td_features import TdFeatures
-
-import signal_processing as sp
-import feature_extraction as fe
-import machine_learning_utils as mlu
-import numpy as np
-import flirt
 from flirt.stats.common import get_stats
-import flirt.hrv.features
+
+import machine_learning_utils as mlu
 
 
 def run_testing(dataset, labels, window_size=5.0):
