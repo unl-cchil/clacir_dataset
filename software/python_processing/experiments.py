@@ -16,7 +16,8 @@ import numpy as np
 import pandas as pd
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, roc_curve, average_precision_score
+from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, roc_curve, average_precision_score, \
+    confusion_matrix
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
@@ -26,6 +27,33 @@ from sklearn.tree import DecisionTreeClassifier
 import case_interfacing as case
 import clasir_interfacing as clasir
 import wesad_interfacing as wesad
+
+
+def get_dataset_stats(dataset, name):
+    dataset_df = pd.DataFrame()
+    subjects = dataset[0]
+    labels = dataset[1]
+    for i in range(0, len(subjects)):
+        classes = list(set(labels[i].ravel()))
+        subject_data = {f"ID": f"Subject {i}"}
+        for c in classes:
+            subject_data.update({
+                f"Class {c}": len(np.where(labels[i].ravel() == c)[0])
+            })
+        dataset_df = dataset_df.append(subject_data, ignore_index=True)
+    dataset_df.set_index("ID", inplace=True)
+    dataset_df.to_excel(os.path.join('dataset_stats', f"{name} Stats.xlsx"))
+
+
+def get_classification_table(y_true, y_score):
+    classes = list(set(y_true))
+    class_table = [[0] * (len(classes) + 1) for _ in range(len(classes))]
+    for y, y_s in zip(y_true, y_score):
+        class_table[y][0] += 1
+        class_table[y][y_s + 1] += 1
+    rows = [f"Class {i}" for i in classes]
+    cols = [" "] + rows
+    return pd.DataFrame(class_table, index=rows, columns=cols)
 
 
 def calculate_tpr_10_per(y_true, y_score):
@@ -72,8 +100,6 @@ def stratifiedgroupkfold_test():
         print(
             f"Train / Test Percentage: {(len(train_ix) / len(x)) * 100:.2f} % / {(len(test_ix) / len(x)) * 100:.2f} %")
         print()
-
-
 
 
 def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binary=True):
@@ -224,6 +250,8 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                 k_fold_df['Accuracy'].append(accuracy_score(y_test, y_hat))
                 k_fold_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
                 k_fold_df['Fitted Models'].append(model)
+                get_classification_table(y_test, y_hat).to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_class_table.csv'))
+                pd.DataFrame(confusion_matrix(y_test, y_hat)).to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_conf_mat.csv'))
                 fold += 1
             if binary:
                 best_models.append(k_fold_df['Fitted Models'][np.argmax(k_fold_df['AP'])])
@@ -267,36 +295,50 @@ if __name__ == '__main__':
     # Generate datasets
     window_size = 5
     wesad_multi, wesad_binary = wesad.windowed_feature_extraction(window_size)
+    get_dataset_stats(wesad_multi, "WESAD Dataset Multi")
+    get_dataset_stats(wesad_binary, "WESAD Dataset Binary")
     wesad_noacc_multi, wesad_noacc_binary = wesad.windowed_feature_extraction(window_size, exclude_acc=True,
                                                                               dataset_name='wesad_no_acc')
-
+    get_dataset_stats(wesad_noacc_multi, "WESAD No Acc Multi")
+    get_dataset_stats(wesad_noacc_binary, "WESAD No Acc Binary")
     clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
+    get_dataset_stats(clasir_multi, "cLASIr Dataset Multi")
+    get_dataset_stats(clasir_binary, "cLASIr Dataset Binary")
     clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
                                                                                  dataset_name='clasir_no_acc')
-
+    get_dataset_stats(clasir_noacc_binary, "cLASIr No Acc Binary")
+    get_dataset_stats(clasir_noacc_multi, "cLASIr No Acc Multi")
     case_multi, case_binary = case.windowed_feature_extraction(window_size)
-
+    get_dataset_stats(case_multi, "CASE Dataset Multi")
+    get_dataset_stats(case_binary, "CASE Dataset Binary")
     case_clasir_binary = [clasir_noacc_binary[0] + case_binary[0],
                           clasir_noacc_binary[1] + case_binary[1]]
+    get_dataset_stats(case_clasir_binary, "CASE cLASIr Dataset Binary")
     case_clasir_multi = [clasir_noacc_multi[0] + case_multi[0],
                          clasir_noacc_multi[1] + case_multi[1]]
+    get_dataset_stats(case_clasir_multi, "CASE cLASIr Dataset Multi")
     clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
                            clasir_noacc_binary[1] + wesad_noacc_binary[1]]
+    get_dataset_stats(clasir_wesad_binary, "cLASIr WESAD Dataset Binary")
     clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
                           clasir_noacc_multi[1] + wesad_noacc_multi[1]]
+    get_dataset_stats(clasir_wesad_multi, "cLASIr WESAD Dataset Multi")
     case_wesad_binary = [wesad_noacc_binary[0] + case_binary[0],
                          wesad_noacc_binary[1] + case_binary[1]]
+    get_dataset_stats(case_wesad_binary, "CASE WESAD Dataset Binary")
     case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
                         wesad_noacc_multi[1] + case_multi[1]]
-
+    get_dataset_stats(case_wesad_multi, "CASE WESAD Dataset Multi")
     full_dataset_binary = [
         clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
         clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
     ]
+    get_dataset_stats(full_dataset_binary, "Full Dataset Binary")
     full_dataset_multi = [
         clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
         clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
     ]
+    get_dataset_stats(full_dataset_multi, "Full Dataset Multi")
 
     # Collect data into DataFrame
     multi_results_df = pd.DataFrame()
@@ -396,8 +438,6 @@ if __name__ == '__main__':
                                                             binary_results_df)
     multi_results_df, full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi", multi_results_df,
                                                           binary=False)
-
-
 
     # Prepare and save results
     multi_results_df.set_index('Experiment', inplace=True)
