@@ -78,7 +78,7 @@ def get_classification_table(y_true, y_score):
     return pd.DataFrame(class_table, index=rows, columns=cols)
 
 
-def area_under_pr_curve(y_true, y_probs):
+def calculate_auprc(y_true, y_probs):
     precision, recall, _ = precision_recall_curve(y_true, y_probs)
     return auc(recall, precision)
 
@@ -136,11 +136,11 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
         y_test = np.vstack((datasets[1])).ravel()
         if binary:
             model_df = dict(
-                (sub, []) for sub in ['F1 Score', 'Accuracy', 'AUC', 'AP', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
+                (sub, []) for sub in ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
         else:
             model_df = dict(
                 (sub, []) for sub in
-                ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Model'])
+                ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Model'])
         for clf in clfs:
             print(f"Testing {str(clf)} on {experiment_name}")
             y_hat_probs = clf.predict_proba(x_test)
@@ -151,12 +151,14 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
                 model_df['EER'].append(calculate_eer(y_test, y_hat_probs[:, 1]))
                 model_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_test, y_hat_probs[:, 1]))
                 model_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_test, y_hat_probs[:, 1]))
+                model_df['AUPRC'].append(calculate_auprc(y_test, y_hat_probs[:, 1]))
             else:
                 y_score = label_binarize(y_test, classes=[0, 1, 2])
                 mean_average_precision = 0
                 eer = 0
                 tpr_1_per, tpr_5_per = 0, 0
                 roc_auc = 0
+                pr_auc = 0
                 for i in range(3):
                     tpr_1_per += calculate_tpr_10_per(y_score[:, i], y_hat_probs[:, i])
                     tpr_5_per += calculate_tpr_5_per(y_score[:, i], y_hat_probs[:, i])
@@ -164,11 +166,13 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
                     mean_average_precision += average_precision_score(y_score[:, i], y_hat_probs[:, i],
                                                                       average='weighted')
                     roc_auc += roc_auc_score(y_score[:, i], y_hat_probs[:, i], average='weighted')
+                    pr_auc += calculate_auprc(y_score[:, i], y_hat_probs[:, i])
                 model_df['mAP'].append(float(mean_average_precision) / 3.0)
                 model_df['mEER'].append(float(eer) / 3.0)
                 model_df['mTPR@1%FPR'].append(float(tpr_1_per) / 3.0)
                 model_df['mTPR@5%FPR'].append(float(tpr_5_per) / 3.0)
-                model_df['mAUC'].append(np.mean(float(roc_auc) / 3.0))
+                model_df['mAUC'].append(float(roc_auc) / 3.0)
+                model_df['mAUPRC'].append(float(pr_auc) / 3.0)
             model_df['Accuracy'].append(accuracy_score(y_test, y_hat))
             model_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
             model_df['Model'].append(str(clf))
@@ -181,23 +185,25 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
         clf_name = clf_names[i]
         if binary:
             clf_results.update({
-                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f} %",
-                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f} %",
-                f"{clf_name} AUC": f"{row['AUC'] * 100:.2f} %",
-                f"{clf_name} AP": f"{row['AP'] * 100:.2f} %",
-                f"{clf_name} TPR@10%FPR": f"{row['TPR@1%FPR'] * 100:.2f} %",
-                f"{clf_name} TPR@5%FPR": f"{row['TPR@5%FPR'] * 100:.2f} %",
-                f"{clf_name} EER": f"{row['EER'] * 100:.2f} %"
+                f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
+                f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
+                f"{clf_name} AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
+                f"{clf_name} AP": f"{np.mean(results_df['AP']) * 100:.2f} \u00B1 {np.std(results_df['AP']) * 100:.2f}",
+                f"{clf_name} AUPRC": f"{np.mean(results_df['AUPRC']) * 100:.2f} \u00B1 {np.std(results_df['AUPRC']) * 100:.2f}",
+                f"{clf_name} EER": f"{np.mean(results_df['EER']) * 100:.2f} \u00B1 {np.std(results_df['EER']) * 100:.2f}",
+                f"{clf_name} TPR@10%FPR": f"{np.mean(results_df['TPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@1%FPR']) * 100:.2f}",
+                f"{clf_name} TPR@5%FPR": f"{np.mean(results_df['TPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@5%FPR']) * 100:.2f}",
             })
         else:
             clf_results.update({
-                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f} %",
-                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f} %",
-                f"{clf_name} mAUC": f"{row['mAUC'] * 100:.2f} %",
-                f"{clf_name} mAP": f"{row['mAP'] * 100:.2f} %",
-                f"{clf_name} mEER": f"{row['mEER'] * 100:.2f} %",
-                f"{clf_name} mTPR@10%FPR": f"{row['mTPR@1%FPR'] * 100:.2f} %",
-                f"{clf_name} mTPR@5%FPR": f"{row['mTPR@5%FPR'] * 100:.2f} %",
+                f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
+                f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
+                f"{clf_name} mAUC": f"{np.mean(results_df['mAUC']) * 100:.2f} \u00B1 {np.std(results_df['mAUC']) * 100:.2f}",
+                f"{clf_name} mAP": f"{np.mean(results_df['mAP']) * 100:.2f} \u00B1 {np.std(results_df['mAP']) * 100:.2f}",
+                f"{clf_name} mAUPRC": f"{np.mean(results_df['mAUPRC']) * 100:.2f} \u00B1 {np.std(results_df['mAUPRC']) * 100:.2f}",
+                f"{clf_name} mEER": f"{np.mean(results_df['mEER']) * 100:.2f} \u00B1 {np.std(results_df['mEER']) * 100:.2f}",
+                f"{clf_name} mTPR@10%FPR": f"{np.mean(results_df['mTPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@1%FPR']) * 100:.2f}",
+                f"{clf_name} mTPR@5%FPR": f"{np.mean(results_df['mTPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@5%FPR']) * 100:.2f}",
             })
     return report_df.append(clf_results, ignore_index=True)
 
@@ -235,12 +241,12 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
             k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=rng)
             if binary:
                 k_fold_df = dict((sub, []) for sub in
-                                 ['F1 Score', 'Accuracy', 'AUC', 'AP', 'TPR@1%FPR', 'TPR@5%FPR', 'EER',
+                                 ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'TPR@1%FPR', 'TPR@5%FPR', 'EER',
                                   'Fitted Models'])
             else:
                 k_fold_df = dict(
                     (sub, []) for sub in
-                    ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Fitted Models'])
+                    ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Fitted Models'])
             print(f"Testing {str(clf)} on {experiment_name}")
             pipeline = make_pipeline(StandardScaler(), clf)
             for train_ix, test_ix in k_fold.split(x, y, groups=groups):
@@ -256,12 +262,14 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                     k_fold_df['EER'].append(calculate_eer(y_test, y_hat_probs[:, 1]))
                     k_fold_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_test, y_hat_probs[:, 1]))
                     k_fold_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_test, y_hat_probs[:, 1]))
+                    k_fold_df['AUPRC'].append(calculate_auprc(y_test, y_hat_probs[:, 1]))
                 else:
                     y_score = label_binarize(y_test, classes=[0, 1, 2])
                     mean_average_precision = 0
                     eer = 0
-                    roc_auc = 0
                     tpr_1_per, tpr_5_per = 0, 0
+                    roc_auc = 0
+                    pr_auc = 0
                     for i in range(3):
                         tpr_1_per += calculate_tpr_10_per(y_score[:, i], y_hat_probs[:, i])
                         tpr_5_per += calculate_tpr_5_per(y_score[:, i], y_hat_probs[:, i])
@@ -269,11 +277,13 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                         mean_average_precision += average_precision_score(y_score[:, i], y_hat_probs[:, i],
                                                                           average='weighted')
                         roc_auc += roc_auc_score(y_score[:, i], y_hat_probs[:, i], average='weighted')
+                        pr_auc += calculate_auprc(y_score[:, i], y_hat_probs[:, i])
                     k_fold_df['mAP'].append(float(mean_average_precision) / 3.0)
                     k_fold_df['mEER'].append(float(eer) / 3.0)
                     k_fold_df['mTPR@1%FPR'].append(float(tpr_1_per) / 3.0)
                     k_fold_df['mTPR@5%FPR'].append(float(tpr_5_per) / 3.0)
                     k_fold_df['mAUC'].append(float(roc_auc) / 3.0)
+                    k_fold_df['mAUPRC'].append(float(pr_auc) / 3.0)
                 k_fold_df['Accuracy'].append(accuracy_score(y_test, y_hat))
                 k_fold_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
                 k_fold_df['Fitted Models'].append(model)
@@ -302,6 +312,7 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                 f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
                 f"{clf_name} AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
                 f"{clf_name} AP": f"{np.mean(results_df['AP']) * 100:.2f} \u00B1 {np.std(results_df['AP']) * 100:.2f}",
+                f"{clf_name} AUPRC": f"{np.mean(results_df['AUPRC']) * 100:.2f} \u00B1 {np.std(results_df['AUPRC']) * 100:.2f}",
                 f"{clf_name} EER": f"{np.mean(results_df['EER']) * 100:.2f} \u00B1 {np.std(results_df['EER']) * 100:.2f}",
                 f"{clf_name} TPR@10%FPR": f"{np.mean(results_df['TPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@1%FPR']) * 100:.2f}",
                 f"{clf_name} TPR@5%FPR": f"{np.mean(results_df['TPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@5%FPR']) * 100:.2f}",
@@ -312,6 +323,7 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                 f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
                 f"{clf_name} mAUC": f"{np.mean(results_df['mAUC']) * 100:.2f} \u00B1 {np.std(results_df['mAUC']) * 100:.2f}",
                 f"{clf_name} mAP": f"{np.mean(results_df['mAP']) * 100:.2f} \u00B1 {np.std(results_df['mAP']) * 100:.2f}",
+                f"{clf_name} mAUPRC": f"{np.mean(results_df['mAUPRC']) * 100:.2f} \u00B1 {np.std(results_df['mAUPRC']) * 100:.2f}",
                 f"{clf_name} mEER": f"{np.mean(results_df['mEER']) * 100:.2f} \u00B1 {np.std(results_df['mEER']) * 100:.2f}",
                 f"{clf_name} mTPR@10%FPR": f"{np.mean(results_df['mTPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@1%FPR']) * 100:.2f}",
                 f"{clf_name} mTPR@5%FPR": f"{np.mean(results_df['mTPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@5%FPR']) * 100:.2f}",
