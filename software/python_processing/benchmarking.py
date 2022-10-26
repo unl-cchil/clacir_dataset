@@ -1,6 +1,28 @@
 """
-Don't forget that line 1135 of venv\Lib\site-packages\sklearn\model_selection\_validation.py was changed from n_classes
+cognitive Load and Subsequent Intervention recognition (cLASIr) Dataset Benchmarking
+
+    This script compares the baseline performance of cLASIr in comparison to the Wearable Stress and Affect Detection
+    (WESAD) and Continuously Annotated Signals of Emotion (CASE) datasets using a suite of models including linear
+    discriminators, neural networks, nearest neighbor heuristic, ensemble learning, and decision trees in both binary
+    and multiclass tasks.
+
+    These three datasets were then mixed together in various permutations to evaluate the affect on learning when the
+    different subjects, methodologies, and sensors were used simultaneously.  Finally, all three datasets are combined.
+
+    The reported measures are top-1 accuracy, F1 score, TPR @ 5% FPR, TPR @ 10% FPR, Equal Error Rate, Area Under the
+    Receiver Operating Characteristic Curve, and Area Under the Precision Recall Curve.  These metrics are generated
+    for each fold of a 10-fold, stratified, identity split, cross validation.  The metrics are reported as the averages
+    with standard deviation in a final output Excel spreadsheet for each classifier, separated by binary versus
+    multiclass.
+
+    It takes approximately 48 hours to run this script from start to finish.  Once a folder has been created for the
+    classification task in the 'results' folder, the script assumes that task has been completed previously and will
+    skip it.
+
+Author: Walker Arce
+Date:   7 Sep 2022
 """
+
 import warnings
 
 from scipy.interpolate import interp1d
@@ -17,7 +39,7 @@ import pandas as pd
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, roc_curve, average_precision_score, \
-    confusion_matrix
+    confusion_matrix, precision_recall_curve, auc
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
@@ -54,6 +76,11 @@ def get_classification_table(y_true, y_score):
     rows = [f"Class {i}" for i in classes]
     cols = [" "] + rows
     return pd.DataFrame(class_table, index=rows, columns=cols)
+
+
+def area_under_pr_curve(y_true, y_probs):
+    precision, recall, _ = precision_recall_curve(y_true, y_probs)
+    return auc(recall, precision)
 
 
 def calculate_tpr_10_per(y_true, y_score):
@@ -250,8 +277,10 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                 k_fold_df['Accuracy'].append(accuracy_score(y_test, y_hat))
                 k_fold_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
                 k_fold_df['Fitted Models'].append(model)
-                get_classification_table(y_test, y_hat).to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_class_table.csv'))
-                pd.DataFrame(confusion_matrix(y_test, y_hat)).to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_conf_mat.csv'))
+                get_classification_table(y_test, y_hat).to_csv(
+                    os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_class_table.csv'))
+                pd.DataFrame(confusion_matrix(y_test, y_hat)).to_csv(
+                    os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_conf_mat.csv'))
                 fold += 1
             if binary:
                 best_models.append(k_fold_df['Fitted Models'][np.argmax(k_fold_df['AP'])])
