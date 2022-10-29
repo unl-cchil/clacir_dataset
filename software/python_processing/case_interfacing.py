@@ -1,3 +1,4 @@
+import copy
 import glob
 import os
 import pickle
@@ -5,16 +6,13 @@ import pickle
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from scipy.spatial import Voronoi, voronoi_plot_2d
 from sklearn import metrics
 from sklearn.cluster import KMeans
-from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils import shuffle
 
 import signal_processing as sp
 from inferencing import get_e4_features
-import copy
 
 
 def get_e4_labels(subject_labels):

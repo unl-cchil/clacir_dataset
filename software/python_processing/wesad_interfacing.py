@@ -6,7 +6,7 @@ import pickle
 
 import numpy as np
 import scipy.signal as signal
-from sklearn.impute import KNNImputer, SimpleImputer
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
 import signal_processing as sp

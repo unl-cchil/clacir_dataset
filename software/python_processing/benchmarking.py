@@ -42,13 +42,68 @@ from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, roc_curve, 
     confusion_matrix, precision_recall_curve, auc
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.preprocessing import label_binarize, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
+import eli5
+import shap
+from eli5.sklearn import PermutationImportance
 
 import case_interfacing as case
 import clasir_interfacing as clasir
 import wesad_interfacing as wesad
+
+feature_names = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 'hrv_rmssd', 'hrv_nni_50',
+                 'hrv_pnni_50', 'hrv_nni_20', 'hrv_pnni_20', 'hrv_cvsd', 'hrv_sdnn', 'hrv_cvnni', 'hrv_mean_hr',
+                 'hrv_min_hr', 'hrv_max_hr', 'hrv_std_hr', 'hrv_SD1', 'hrv_SD2', 'hrv_SD2SD1', 'hrv_CSI', 'hrv_CVI',
+                 'hrv_CSI_Modified', 'hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp', 'hrv_sum', 'hrv_energy',
+                 'hrv_skewness', 'hrv_kurtosis', 'hrv_peaks', 'hrv_rms', 'hrv_lineintegral', 'hrv_n_above_mean',
+                 'hrv_n_below_mean', 'hrv_n_sign_changes', 'hrv_iqr', 'hrv_iqr_5_95', 'hrv_pct_5', 'hrv_pct_95',
+                 'hrv_entropy', 'hrv_perm_entropy', 'hrv_svd_entropy', 'hrv_total_power', 'hrv_vlf', 'hrv_lf', 'hrv_hf',
+                 'hrv_lf_hf_ratio', 'hrv_lfnu', 'hrv_hfnu', 'eda_mean', 'eda_std', 'eda_min', 'eda_max', 'eda_ptp',
+                 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks', 'eda_rms', 'eda_lineintegral',
+                 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5',
+                 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy', 'eda_mean', 'eda_std', 'eda_min',
+                 'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks', 'eda_rms',
+                 'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr',
+                 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy',
+                 'accx_mean', 'accx_std', 'accx_min', 'accx_max', 'accx_ptp', 'accx_sum', 'accx_energy',
+                 'accx_skewness', 'accx_kurtosis', 'accx_peaks', 'accx_rms', 'accx_lineintegral', 'accx_n_above_mean',
+                 'accx_n_below_mean', 'accx_n_sign_changes', 'accx_iqr', 'accx_iqr_5_95', 'accx_pct_5', 'accx_pct_95',
+                 'accx_entropy', 'accx_perm_entropy', 'accx_svd_entropy', 'accy_mean', 'accy_std', 'accy_min',
+                 'accy_max', 'accy_ptp', 'accy_sum', 'accy_energy', 'accy_skewness', 'accy_kurtosis', 'accy_peaks',
+                 'accy_rms', 'accy_lineintegral', 'accy_n_above_mean', 'accy_n_below_mean', 'accy_n_sign_changes',
+                 'accy_iqr', 'accy_iqr_5_95', 'accy_pct_5', 'accy_pct_95', 'accy_entropy', 'accy_perm_entropy',
+                 'accy_svd_entropy', 'accz_mean', 'accz_std', 'accz_min', 'accz_max', 'accz_ptp', 'accz_sum',
+                 'accz_energy', 'accz_skewness', 'accz_kurtosis', 'accz_peaks', 'accz_rms', 'accz_lineintegral',
+                 'accz_n_above_mean', 'accz_n_below_mean', 'accz_n_sign_changes', 'accz_iqr', 'accz_iqr_5_95',
+                 'accz_pct_5', 'accz_pct_95', 'accz_entropy', 'accz_perm_entropy', 'accz_svd_entropy', 'tmp_mean',
+                 'tmp_std', 'tmp_min', 'tmp_max', 'tmp_ptp', 'tmp_sum', 'tmp_energy', 'tmp_skewness', 'tmp_kurtosis',
+                 'tmp_peaks', 'tmp_rms', 'tmp_lineintegral', 'tmp_n_above_mean', 'tmp_n_below_mean',
+                 'tmp_n_sign_changes', 'tmp_iqr', 'tmp_iqr_5_95', 'tmp_pct_5', 'tmp_pct_95', 'tmp_entropy',
+                 'tmp_perm_entropy', 'tmp_svd_entropy'
+                 ]
+
+feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 'hrv_rmssd', 'hrv_nni_50',
+                        'hrv_pnni_50', 'hrv_nni_20', 'hrv_pnni_20', 'hrv_cvsd', 'hrv_sdnn', 'hrv_cvnni', 'hrv_mean_hr',
+                        'hrv_min_hr', 'hrv_max_hr', 'hrv_std_hr', 'hrv_SD1', 'hrv_SD2', 'hrv_SD2SD1', 'hrv_CSI',
+                        'hrv_CVI', 'hrv_CSI_Modified', 'hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp',
+                        'hrv_sum', 'hrv_energy', 'hrv_skewness', 'hrv_kurtosis', 'hrv_peaks', 'hrv_rms',
+                        'hrv_lineintegral', 'hrv_n_above_mean', 'hrv_n_below_mean', 'hrv_n_sign_changes', 'hrv_iqr',
+                        'hrv_iqr_5_95', 'hrv_pct_5', 'hrv_pct_95', 'hrv_entropy', 'hrv_perm_entropy', 'hrv_svd_entropy',
+                        'hrv_total_power', 'hrv_vlf', 'hrv_lf', 'hrv_hf', 'hrv_lf_hf_ratio', 'hrv_lfnu', 'hrv_hfnu',
+                        'eda_mean', 'eda_std', 'eda_min', 'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness',
+                        'eda_kurtosis', 'eda_peaks', 'eda_rms', 'eda_lineintegral', 'eda_n_above_mean',
+                        'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95',
+                        'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy', 'eda_mean', 'eda_std', 'eda_min',
+                        'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks',
+                        'eda_rms',  'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes',
+                        'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy',
+                        'eda_svd_entropy', 'tmp_mean', 'tmp_std', 'tmp_min', 'tmp_max', 'tmp_ptp', 'tmp_sum',
+                        'tmp_energy', 'tmp_skewness', 'tmp_kurtosis', 'tmp_peaks', 'tmp_rms', 'tmp_lineintegral',
+                        'tmp_n_above_mean', 'tmp_n_below_mean', 'tmp_n_sign_changes', 'tmp_iqr', 'tmp_iqr_5_95',
+                        'tmp_pct_5', 'tmp_pct_95', 'tmp_entropy', 'tmp_perm_entropy', 'tmp_svd_entropy'
+                        ]
 
 
 def get_dataset_stats(dataset, name):
@@ -67,12 +122,18 @@ def get_dataset_stats(dataset, name):
     dataset_df.to_excel(os.path.join('dataset_stats', f"{name} Stats.xlsx"))
 
 
+def get_feature_importance(model, x_test, y_test, fold, fi_df):
+    perm = PermutationImportance(model, n_iter=10, cv='prefit').fit(x_test, y_test)
+    for i in range(0, len(perm.results_)):
+        fi_df[f"{str(model.named_steps['clf'])[0:5]} {fold} Iter {i}"] = perm.results_[i]
+
+
 def get_classification_table(y_true, y_score):
     classes = list(set(y_true))
     class_table = [[0] * (len(classes) + 1) for _ in range(len(classes))]
     for y, y_s in zip(y_true, y_score):
-        class_table[y][0] += 1
-        class_table[y][y_s + 1] += 1
+        class_table[int(y)][0] += 1
+        class_table[int(y)][y_s + 1] += 1
     rows = [f"Class {i}" for i in classes]
     cols = [" "] + rows
     return pd.DataFrame(class_table, index=rows, columns=cols)
@@ -129,14 +190,16 @@ def stratifiedgroupkfold_test():
         print()
 
 
-def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binary=True):
+def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, features, binary=True):
     if not os.path.exists(os.path.join('results', str(experiment_name))):
         os.mkdir(os.path.join('results', str(experiment_name)))
         x_test = np.vstack((datasets[0]))
         y_test = np.vstack((datasets[1])).ravel()
+        feature_importance_df = dict()
         if binary:
             model_df = dict(
-                (sub, []) for sub in ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
+                (sub, []) for sub in
+                ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
         else:
             model_df = dict(
                 (sub, []) for sub in
@@ -145,6 +208,7 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
             print(f"Testing {str(clf)} on {experiment_name}")
             y_hat_probs = clf.predict_proba(x_test)
             y_hat = np.argmax(y_hat_probs, axis=1)
+            get_feature_importance(clf, x_test, y_test, 'eval', feature_importance_df)
             if binary:
                 model_df['AP'].append(average_precision_score(y_test, y_hat_probs[:, 1], average='weighted'))
                 model_df['AUC'].append(roc_auc_score(y_test, y_hat_probs[:, 1], average='weighted'))
@@ -178,6 +242,8 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
             model_df['Model'].append(str(clf))
         pd.DataFrame(model_df).to_csv(
             os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
+        pd.DataFrame(feature_importance_df, index=features).transpose().to_csv(
+            os.path.join('results', str(experiment_name), f'{experiment_name}_fi.csv'))
     clf_results = {f"Experiment": experiment_name}
     results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
     clf_names = ['LDA', 'KNC', 'DTC', 'RFC', 'MLP']
@@ -208,7 +274,7 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, binar
     return report_df.append(clf_results, ignore_index=True)
 
 
-def train_fresh_models(datasets, experiment_name, report_df, binary=True):
+def train_fresh_models(datasets, experiment_name, report_df, features, binary=True):
     rng = np.random.RandomState(0)
     classifiers = [LinearDiscriminantAnalysis(),
                    KNeighborsClassifier(9),
@@ -238,6 +304,7 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
         best_models = []
         for clf in classifiers:
             fold = 0
+            feature_importance_df = dict()
             k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=rng)
             if binary:
                 k_fold_df = dict((sub, []) for sub in
@@ -246,9 +313,10 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
             else:
                 k_fold_df = dict(
                     (sub, []) for sub in
-                    ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Fitted Models'])
+                    ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER',
+                     'Fitted Models'])
             print(f"Testing {str(clf)} on {experiment_name}")
-            pipeline = make_pipeline(StandardScaler(), clf)
+            pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('clf', clf)])
             for train_ix, test_ix in k_fold.split(x, y, groups=groups):
                 print(f"\tRunning fold {fold} of 10")
                 train_x, x_test = x[train_ix], x[test_ix]
@@ -256,6 +324,7 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                 model = pipeline.fit(train_x, train_y)
                 y_hat_probs = model.predict_proba(x_test)
                 y_hat = np.argmax(y_hat_probs, axis=1)
+                get_feature_importance(model, x_test, y_test, fold, feature_importance_df)
                 if binary:
                     k_fold_df['AP'].append(average_precision_score(y_test, y_hat_probs[:, 1], average='weighted'))
                     k_fold_df['AUC'].append(roc_auc_score(y_test, y_hat_probs[:, 1], average='weighted'))
@@ -287,17 +356,19 @@ def train_fresh_models(datasets, experiment_name, report_df, binary=True):
                 k_fold_df['Accuracy'].append(accuracy_score(y_test, y_hat))
                 k_fold_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
                 k_fold_df['Fitted Models'].append(model)
-                get_classification_table(y_test, y_hat).to_csv(
-                    os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_class_table.csv'))
-                pd.DataFrame(confusion_matrix(y_test, y_hat)).to_csv(
-                    os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_conf_mat.csv'))
                 fold += 1
             if binary:
                 best_models.append(k_fold_df['Fitted Models'][np.argmax(k_fold_df['AP'])])
             else:
                 best_models.append(k_fold_df['Fitted Models'][np.argmax(k_fold_df['mAP'])])
+            get_classification_table(y, np.argmax(best_models[-1].predict_proba(x), axis=1)).to_csv(
+                os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_class_table.csv'))
+            pd.DataFrame(confusion_matrix(y, np.argmax(best_models[-1].predict_proba(x), axis=1))).to_csv(
+                os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_conf_mat.csv'))
             pd.DataFrame(k_fold_df).to_csv(
                 os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
+            pd.DataFrame(feature_importance_df, index=features).transpose().to_csv(
+                os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi.csv'))
         with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'wb') as f:
             pickle.dump(best_models, f)
     with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'rb') as f:
@@ -389,96 +460,98 @@ if __name__ == '__main__':
     binary_eval_df = pd.DataFrame()
 
     # Perform classic benchmarking with SciKit Learn built in models on each dataset
-    binary_results_df, wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task', binary_results_df)
+    binary_results_df, wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task', binary_results_df,
+                                                               feature_names)
     multi_results_df, wesad_multi_alone = train_fresh_models(wesad_multi, 'WESAD Multiclass Task', multi_results_df,
-                                                             binary=False)
+                                                             feature_names, binary=False)
 
-    binary_results_df, clasir_binary_alone = train_fresh_models(clasir_binary, 'cLASIr Binary Task', binary_results_df)
+    binary_results_df, clasir_binary_alone = train_fresh_models(clasir_binary, 'cLASIr Binary Task', binary_results_df,
+                                                                feature_names)
     multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', multi_results_df,
-                                                              binary=False)
+                                                              feature_names, binary=False)
 
     # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
     binary_results_df, wesad_noacc_binary_alone = train_fresh_models(wesad_noacc_binary,
                                                                      'WESAD Binary Task, No Accelerometer',
-                                                                     binary_results_df)
+                                                                     binary_results_df, feature_names_no_acc)
     multi_results_df, wesad_noacc_multi_alone = train_fresh_models(wesad_noacc_multi,
                                                                    'WESAD Multiclass Task, No Accelerometer',
-                                                                   multi_results_df, binary=False)
+                                                                   multi_results_df, feature_names_no_acc, binary=False)
 
     binary_results_df, clasir_noacc_binary_alone = train_fresh_models(clasir_noacc_binary,
                                                                       'cLASIr Binary Task, No Accelerometer',
-                                                                      binary_results_df)
+                                                                      binary_results_df, feature_names_no_acc)
     multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
                                                                     'cLASIr Multiclass Task, No Accelerometer',
-                                                                    multi_results_df, binary=False)
+                                                                    multi_results_df, feature_names_no_acc, binary=False)
 
-    binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df)
+    binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df, feature_names_no_acc)
     multi_results_df, case_multi_alone = train_fresh_models(case_multi, 'CASE Multiclass Task', multi_results_df,
-                                                            binary=False)
+                                                            feature_names_no_acc, binary=False)
 
     # Observe domain shift by using best model for each dataset on the other datasets
     multi_eval_df = evaluate_pretrained_models(wesad_multi_alone, clasir_multi, "WESAD on cLASIr, Multi", multi_eval_df,
-                                               binary=False)
+                                               feature_names_no_acc, binary=False)
     binary_eval_df = evaluate_pretrained_models(wesad_binary_alone, clasir_binary, "WESAD on cLASIr, Binary",
-                                                binary_eval_df)
+                                                binary_eval_df, feature_names_no_acc)
 
     multi_eval_df = evaluate_pretrained_models(clasir_multi_alone, wesad_multi, "cLASIr on WESAD, Multi", multi_eval_df,
-                                               binary=False)
+                                               feature_names_no_acc, binary=False)
     binary_eval_df = evaluate_pretrained_models(clasir_binary_alone, wesad_binary, "cLASIr on WESAD, Binary",
-                                                binary_eval_df)
+                                                binary_eval_df, feature_names_no_acc)
 
     binary_eval_df = evaluate_pretrained_models(wesad_noacc_binary_alone, case_clasir_binary, "WESAD on Others, Binary",
-                                                binary_eval_df)
+                                                binary_eval_df, feature_names_no_acc)
     multi_eval_df = evaluate_pretrained_models(wesad_noacc_multi_alone, case_clasir_multi, "WESAD on Others, Multi",
-                                               multi_eval_df, binary=False)
+                                               multi_eval_df, feature_names_no_acc, binary=False)
 
     binary_eval_df = evaluate_pretrained_models(clasir_noacc_binary_alone, case_wesad_binary,
                                                 "cLASIr on Others, Binary", binary_eval_df)
     multi_eval_df = evaluate_pretrained_models(clasir_noacc_multi_alone, case_wesad_multi, "cLASIr on Others, Multi",
-                                               multi_eval_df, binary=False)
+                                               multi_eval_df, feature_names_no_acc, binary=False)
 
     binary_eval_df = evaluate_pretrained_models(case_binary_alone, clasir_wesad_binary, "CASE on Others, Binary",
-                                                binary_eval_df)
+                                                binary_eval_df, feature_names_no_acc)
     multi_eval_df = evaluate_pretrained_models(case_multi_alone, clasir_wesad_multi, "CASE on Others, Multi",
-                                               multi_eval_df, binary=False)
+                                               multi_eval_df, feature_names_no_acc, binary=False)
 
     # Perform domain adaptation using dataset mixing, benchmark in the same way
     binary_results_df, case_clasir_mix_binary = train_fresh_models(case_clasir_binary, "CASE cLASIr Transfer, Binary",
-                                                                   binary_results_df)
+                                                                   binary_results_df, feature_names_no_acc)
     multi_results_df, case_clasir_mix_multi = train_fresh_models(case_clasir_multi, "CASE cLASIr Transfer, Multi",
-                                                                 multi_results_df, binary=False)
+                                                                 multi_results_df, feature_names_no_acc, binary=False)
 
     binary_results_df, case_wesad_mix_binary = train_fresh_models(case_wesad_binary, "CASE WESAD Transfer, Binary",
-                                                                  binary_results_df)
+                                                                  binary_results_df, feature_names_no_acc)
     multi_results_df, case_wesad_mix_multi = train_fresh_models(case_wesad_multi, "CASE WESAD Transfer, Multi",
-                                                                multi_results_df, binary=False)
+                                                                multi_results_df, feature_names_no_acc, binary=False)
 
     binary_results_df, clasir_wesad_mix_binary = train_fresh_models(clasir_wesad_binary,
-                                                                    "cLASIr WESAD Transfer, Binary", binary_results_df)
+                                                                    "cLASIr WESAD Transfer, Binary", binary_results_df, feature_names_no_acc)
     multi_results_df, clasir_wesad_mix_multi = train_fresh_models(clasir_wesad_multi, "cLASIr WESAD Transfer, Multi",
-                                                                  multi_results_df, binary=False)
+                                                                  multi_results_df, feature_names_no_acc, binary=False)
 
     # Evaluate improved domain shift
     binary_eval_df = evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_binary,
-                                                "CASE cLASIr on Others, Binary", binary_eval_df)
+                                                "CASE cLASIr on Others, Binary", binary_eval_df, feature_names_no_acc)
     multi_eval_df = evaluate_pretrained_models(case_clasir_mix_multi, wesad_noacc_multi, "CASE cLASIr on Others, Multi",
-                                               multi_eval_df, binary=False)
+                                               multi_eval_df, feature_names_no_acc, binary=False)
 
     binary_eval_df = evaluate_pretrained_models(case_wesad_mix_binary, clasir_noacc_binary,
-                                                "CASE WESAD on Others, Binary", binary_eval_df)
+                                                "CASE WESAD on Others, Binary", binary_eval_df, feature_names_no_acc)
     multi_eval_df = evaluate_pretrained_models(case_wesad_mix_multi, clasir_noacc_multi, "CASE WESAD on Others, Multi",
-                                               multi_eval_df, binary=False)
+                                               multi_eval_df, feature_names_no_acc, binary=False)
 
     binary_eval_df = evaluate_pretrained_models(clasir_wesad_mix_binary, case_binary, "cLASIr WESAD on Others, Binary",
-                                                binary_eval_df)
+                                                binary_eval_df, feature_names_no_acc)
     multi_eval_df = evaluate_pretrained_models(clasir_wesad_mix_multi, case_multi, "cLASIr WESAD on Others, Multi",
-                                               multi_eval_df, binary=False)
+                                               multi_eval_df, feature_names_no_acc, binary=False)
 
     # Evaluate using all data, 34 classification tasks total
     binary_results_df, full_mix_binary = train_fresh_models(full_dataset_binary, "Full Dataset, Binary",
-                                                            binary_results_df)
+                                                            binary_results_df, feature_names_no_acc)
     multi_results_df, full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi", multi_results_df,
-                                                          binary=False)
+                                                          feature_names_no_acc, binary=False)
 
     # Prepare and save results
     multi_results_df.set_index('Experiment', inplace=True)

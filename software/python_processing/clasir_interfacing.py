@@ -1,19 +1,15 @@
 import copy
+import csv
 import glob
 import os
 import pickle
 
-import flirt
 import numpy as np
-from sklearn.utils import shuffle
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler
 
 import signal_processing as sp
-import csv
-from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn.preprocessing import normalize
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from inferencing import get_e4_features
-import pandas as pd
 
 
 def get_e4_labels(subject_labels):
