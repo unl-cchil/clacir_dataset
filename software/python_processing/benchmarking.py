@@ -279,18 +279,17 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, featu
 
 def train_fresh_models(datasets, experiment_name, report_df, features=None, binary=True):
     rng = np.random.RandomState(0)
-    classifiers = [LinearDiscriminantAnalysis(),
-                   KNeighborsClassifier(9),
-                   DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-                   RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng),
-                   # AdaBoostClassifier(n_estimators=100, base_estimator=DecisionTreeClassifier(min_samples_split=20), random_state=rng),
-                   # SVC(kernel="linear", C=0.025, probability=True),
-                   # SVC(gamma=2, C=1, probability=True),
-                   # GaussianProcessClassifier(1.0 * RBF(1.0)),
-                   MLPClassifier(max_iter=1000),
-                   # GaussianNB(),
-                   # QuadraticDiscriminantAnalysis()
-                   ]
+    if features is None:
+        classifiers = [LinearDiscriminantAnalysis(),
+                       KNeighborsClassifier(9, n_jobs=-1),
+                       DecisionTreeClassifier(min_samples_split=20, random_state=rng),
+                       RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
+                       MLPClassifier(max_iter=1000)]
+    else:
+        classifiers = [LinearDiscriminantAnalysis(),
+                       DecisionTreeClassifier(min_samples_split=20, random_state=rng),
+                       RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
+                       MLPClassifier(max_iter=1000)]
     if not os.path.exists(os.path.join('results', str(experiment_name))):
         os.mkdir(os.path.join('results', str(experiment_name)))
         groups = []
@@ -473,7 +472,7 @@ if __name__ == '__main__':
     binary_results_df, clasir_binary_alone = train_fresh_models(clasir_binary, 'cLASIr Binary Task', binary_results_df,
                                                                 None)
     multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', multi_results_df,
-                                                              feature_names, binary=False)
+                                                              None, binary=False)
 
     # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
     binary_results_df, wesad_noacc_binary_alone = train_fresh_models(wesad_noacc_binary,
@@ -488,7 +487,7 @@ if __name__ == '__main__':
                                                                       binary_results_df, None)
     multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
                                                                     'cLASIr Multiclass Task, No Accelerometer',
-                                                                    multi_results_df, feature_names_no_acc, binary=False)
+                                                                    multi_results_df, None, binary=False)
 
     binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df,
                                                               None)
@@ -572,3 +571,11 @@ if __name__ == '__main__':
 
     binary_eval_df.set_index('Experiment', inplace=True)
     binary_eval_df.to_excel(os.path.join('results', 'Binary Evaluation Results.xlsx'))
+
+    multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task, FI', multi_results_df,
+                                                              feature_names, binary=False)
+
+    multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
+                                                                    'cLASIr Multiclass Task, No Accelerometer, FI',
+                                                                    multi_results_df, feature_names_no_acc,
+                                                                    binary=False)

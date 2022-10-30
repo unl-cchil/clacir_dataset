@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import cohen_kappa_score, r2_score, roc_auc_score, auc, precision_recall_curve, make_scorer
 from sklearn.model_selection import GridSearchCV, StratifiedGroupKFold
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 import clasir_interfacing as clasir
@@ -41,12 +41,11 @@ def regression_tests(datasets, experiment_name):
                                [['l2', 'none'], ['l2', 'none'], ['l1', 'l2'], ['l2', 'none'],
                                 ['elasticnet', 'l1', 'l2', 'none']]):
         grid_values = {'penalty': penalty, 'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
-        grid_search = Pipeline([
-            ('scaler', StandardScaler()),
-            ('search', GridSearchCV(LogisticRegression(solver=solver), param_grid=grid_values, cv=k_fold, n_jobs=-1,
-                                    error_score=np.nan, scoring=scoring, refit='AUPRC'))])
+        pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver))
+        grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
+                                   error_score=np.nan, scoring=scoring, refit='AUPRC')
         clf = grid_search.fit(x, y)
-        pd.DataFrame(grid_search.named_steps['search'].cv_results_).to_excel(
+        pd.DataFrame(grid_search.cv_results_).to_excel(
             os.path.join('results', str(experiment_name),
                          f"{str(experiment_name)}_{solver}.xlsx"))
         with open(os.path.join('results', str(experiment_name), f"{str(experiment_name)}_best.pkl"), 'wb') as f:
