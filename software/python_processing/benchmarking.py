@@ -385,7 +385,7 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
                 f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
                 f"{clf_name} AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
                 f"{clf_name} AP": f"{np.mean(results_df['AP']) * 100:.2f} \u00B1 {np.std(results_df['AP']) * 100:.2f}",
-                f"{clf_name} Kappa": f"{np.mean(results_df['Kappa']) * 100:.2f} \u00B1 {np.std(results_df['Kappa']) * 100:.2f}",
+                f"{clf_name} Kappa": f"{np.mean(results_df['Kappa']):.2f} \u00B1 {np.std(results_df['Kappa']):.2f}",
                 f"{clf_name} AUPRC": f"{np.mean(results_df['AUPRC']) * 100:.2f} \u00B1 {np.std(results_df['AUPRC']) * 100:.2f}",
                 f"{clf_name} EER": f"{np.mean(results_df['EER']) * 100:.2f} \u00B1 {np.std(results_df['EER']) * 100:.2f}",
                 f"{clf_name} TPR@10%FPR": f"{np.mean(results_df['TPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@1%FPR']) * 100:.2f}",
@@ -397,7 +397,7 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
                 f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
                 f"{clf_name} mAUC": f"{np.mean(results_df['mAUC']) * 100:.2f} \u00B1 {np.std(results_df['mAUC']) * 100:.2f}",
                 f"{clf_name} mAP": f"{np.mean(results_df['mAP']) * 100:.2f} \u00B1 {np.std(results_df['mAP']) * 100:.2f}",
-                f"{clf_name} Kappa": f"{np.mean(results_df['Kappa']) * 100:.2f} \u00B1 {np.std(results_df['Kappa']) * 100:.2f}",
+                f"{clf_name} Kappa": f"{np.mean(results_df['Kappa']):.2f} \u00B1 {np.std(results_df['Kappa']):.2f}",
                 f"{clf_name} mAUPRC": f"{np.mean(results_df['mAUPRC']) * 100:.2f} \u00B1 {np.std(results_df['mAUPRC']) * 100:.2f}",
                 f"{clf_name} mEER": f"{np.mean(results_df['mEER']) * 100:.2f} \u00B1 {np.std(results_df['mEER']) * 100:.2f}",
                 f"{clf_name} mTPR@10%FPR": f"{np.mean(results_df['mTPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@1%FPR']) * 100:.2f}",
@@ -511,7 +511,7 @@ if __name__ == '__main__':
                                                multi_eval_df, None, binary=False)
 
     binary_eval_df = evaluate_pretrained_models(clasir_noacc_binary_alone, case_wesad_binary,
-                                                "cLASIr on Others, Binary", binary_eval_df)
+                                                "cLASIr on Others, Binary", binary_eval_df, None)
     multi_eval_df = evaluate_pretrained_models(clasir_noacc_multi_alone, case_wesad_multi, "cLASIr on Others, Multi",
                                                multi_eval_df, None, binary=False)
 
@@ -572,10 +572,10 @@ if __name__ == '__main__':
     binary_eval_df.set_index('Experiment', inplace=True)
     binary_eval_df.to_excel(os.path.join('results', 'Binary Evaluation Results.xlsx'))
 
-    multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task, FI', multi_results_df,
-                                                              feature_names, binary=False)
-
-    multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
-                                                                    'cLASIr Multiclass Task, No Accelerometer, FI',
-                                                                    multi_results_df, feature_names_no_acc,
-                                                                    binary=False)
+    # multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task, FI', multi_results_df,
+    #                                                           feature_names, binary=False)
+    #
+    # multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
+    #                                                                 'cLASIr Multiclass Task, No Accelerometer, FI',
+    #                                                                 multi_results_df, feature_names_no_acc,
+    #                                                                 binary=False)
