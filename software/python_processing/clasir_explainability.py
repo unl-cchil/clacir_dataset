@@ -77,7 +77,7 @@ def pose_active_passive(dataset, labels):
 
 
 def run_shapley_tests(dataset, features, experiment_name):
-    if os.path.exists(os.path.join('results', 'FI')):
+    if not os.path.exists(os.path.join('results', 'FI')):
         os.mkdir(os.path.join('results', 'FI'))
     rng = np.random.RandomState(0)
     groups = []
@@ -88,30 +88,32 @@ def run_shapley_tests(dataset, features, experiment_name):
     x = np.vstack(dataset[0])
     y = np.vstack(dataset[1]).ravel()
 
-    k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=rng)
-    train_ix, test_ix = next(k_fold.split(x, y, groups))
-    train_x, x_test = x[train_ix], x[test_ix]
-    train_y, y_test = y[train_ix], y[test_ix]
-
+    model_coefs = []
+    model_fi = None
     pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('clf', LinearDiscriminantAnalysis())])
-    base_model = pipeline.fit(train_x, train_y)
+    k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=rng)
+    for train_ix, test_ix in k_fold.split(x, y, groups):
+        train_x, x_test = x[train_ix], x[test_ix]
+        train_y, y_test = y[train_ix], y[test_ix]
 
-    pd.DataFrame(base_model.named_steps['clf'].coef_[0], index=features).to_excel(os.path.join('results', 'FI', f'{experiment_name}.xlsx'))
+        base_model = pipeline.fit(train_x, train_y)
+        model_coefs.append(base_model.named_steps['clf'].coef_[0])
+        explainer = shap.Explainer(base_model.predict, x_test, feature_names=features)
+        shap_values = explainer(x_test)
+        shap.summary_plot(shap_values, plot_type='violin', show=False, feature_names=features)
+        fig = gcf()
+        fig.savefig(os.path.join('results', 'FI', f'{experiment_name}_{len(model_coefs)}.png'))
+        fig.clear()
+    pd.DataFrame(model_coefs, columns=features).to_excel(os.path.join('results', 'FI', f'{experiment_name}.xlsx'))
 
-    explainer = shap.Explainer(base_model.predict, x_test, feature_names=features)
-    shap_values = explainer(x_test)
-    shap.summary_plot(shap_values, plot_type='violin', show=False)
-    fig = gcf()
-    fig.savefig(os.path.join('results', 'FI', f'{experiment_name}.png'))
-    fig.clear()
 
+if __name__ == '__main__':
+    clasir_multi, _ = clasir.windowed_feature_extraction(5)
+    clasir_int = pose_active_passive(clasir_multi[0], clasir_multi[1])
 
-clasir_multi, _ = clasir.windowed_feature_extraction(5)
-clasir_int = pose_active_passive(clasir_multi[0], clasir_multi[1])
+    clasir_noacc_multi, _ = clasir.windowed_feature_extraction(5, exclude_acc=True,
+                                                               dataset_name='clasir_no_acc')
+    clasir_noacc_int = pose_active_passive(clasir_noacc_multi[0], clasir_noacc_multi[1])
 
-clasir_noacc_multi, _ = clasir.windowed_feature_extraction(5, exclude_acc=True,
-                                                           dataset_name='clasir_no_acc')
-clasir_noacc_int = pose_active_passive(clasir_noacc_multi[0], clasir_noacc_multi[1])
-
-run_shapley_tests(clasir_int, feature_names, 'acc_fi')
-run_shapley_tests(clasir_noacc_int, feature_names_no_acc, 'no_acc_fi')
+    run_shapley_tests(clasir_int, feature_names, 'acc_fi')
+    run_shapley_tests(clasir_noacc_int, feature_names_no_acc, 'no_acc_fi')
