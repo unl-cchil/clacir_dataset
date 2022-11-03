@@ -65,17 +65,6 @@ feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_
                         ]
 
 
-def pose_active_passive(dataset, labels):
-    # 0 = Control | 1 = Precondition | 2 = HAI
-    trimmed_dataset, trimmed_labels = [], []
-    for x, y in zip(dataset, labels):
-        del_indxs = np.where(y == 1)[0]
-        trimmed_labels.append(np.delete(y, del_indxs, 0))
-        trimmed_dataset.append(np.delete(x, del_indxs, 0))
-        trimmed_labels[-1][trimmed_labels[-1] == 2] = 1
-    return trimmed_dataset, trimmed_labels
-
-
 def run_shapley_tests(dataset, features, experiment_name):
     if not os.path.exists(os.path.join('results', 'FI')):
         os.mkdir(os.path.join('results', 'FI'))
@@ -108,12 +97,9 @@ def run_shapley_tests(dataset, features, experiment_name):
 
 
 if __name__ == '__main__':
-    clasir_multi, _ = clasir.windowed_feature_extraction(5)
-    clasir_int = pose_active_passive(clasir_multi[0], clasir_multi[1])
-
-    clasir_noacc_multi, _ = clasir.windowed_feature_extraction(5, exclude_acc=True,
-                                                               dataset_name='clasir_no_acc')
-    clasir_noacc_int = pose_active_passive(clasir_noacc_multi[0], clasir_noacc_multi[1])
+    _, _, clasir_int = clasir.windowed_feature_extraction(5)
+    _, _, clasir_noacc_int = clasir.windowed_feature_extraction(5, exclude_acc=True,
+                                                                dataset_name='clasir_no_acc')
 
     run_shapley_tests(clasir_int, feature_names, 'acc_fi')
     run_shapley_tests(clasir_noacc_int, feature_names_no_acc, 'no_acc_fi')

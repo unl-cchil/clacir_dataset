@@ -98,7 +98,7 @@ feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_
                         'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95',
                         'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy', 'eda_mean', 'eda_std', 'eda_min',
                         'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks',
-                        'eda_rms',  'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes',
+                        'eda_rms', 'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes',
                         'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy',
                         'eda_svd_entropy', 'tmp_mean', 'tmp_std', 'tmp_min', 'tmp_max', 'tmp_ptp', 'tmp_sum',
                         'tmp_energy', 'tmp_skewness', 'tmp_kurtosis', 'tmp_peaks', 'tmp_rms', 'tmp_lineintegral',
@@ -307,7 +307,8 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
             k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=rng)
             if binary:
                 k_fold_df = dict((sub, []) for sub in
-                                 ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR', 'TPR@5%FPR', 'EER',
+                                 ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR', 'TPR@5%FPR',
+                                  'EER',
                                   'Fitted Models'])
             else:
                 k_fold_df = dict(
@@ -417,13 +418,16 @@ if __name__ == '__main__':
                                                                               dataset_name='wesad_no_acc')
     get_dataset_stats(wesad_noacc_multi, "WESAD No Acc Multi")
     get_dataset_stats(wesad_noacc_binary, "WESAD No Acc Binary")
-    clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
+    clasir_multi, clasir_binary, clasir_ap = clasir.windowed_feature_extraction(window_size)
     get_dataset_stats(clasir_multi, "cLASIr Dataset Multi")
     get_dataset_stats(clasir_binary, "cLASIr Dataset Binary")
-    clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
-                                                                                 dataset_name='clasir_no_acc')
+    get_dataset_stats(clasir_ap, "cLASIr Dataset AP")
+    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap = clasir.windowed_feature_extraction(window_size,
+                                                                                                  exclude_acc=True,
+                                                                                                  dataset_name='clasir_no_acc')
     get_dataset_stats(clasir_noacc_binary, "cLASIr No Acc Binary")
     get_dataset_stats(clasir_noacc_multi, "cLASIr No Acc Multi")
+    get_dataset_stats(clasir_noacc_ap, "cLASIr No Acc AP")
     case_multi, case_binary = case.windowed_feature_extraction(window_size)
     get_dataset_stats(case_multi, "CASE Dataset Multi")
     get_dataset_stats(case_binary, "CASE Dataset Binary")
@@ -474,6 +478,8 @@ if __name__ == '__main__':
     multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', multi_results_df,
                                                               None, binary=False)
 
+    binary_results_df, _ = train_fresh_models(clasir_ap, 'cLASIr AvP Task', binary_results_df, None)
+
     # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
     binary_results_df, wesad_noacc_binary_alone = train_fresh_models(wesad_noacc_binary,
                                                                      'WESAD Binary Task, No Accelerometer',
@@ -488,6 +494,8 @@ if __name__ == '__main__':
     multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
                                                                     'cLASIr Multiclass Task, No Accelerometer',
                                                                     multi_results_df, None, binary=False)
+
+    binary_results_df, _ = train_fresh_models(clasir_noacc_ap, 'cLASIr AvP Task, No Accelerometer', binary_results_df, None)
 
     binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df,
                                                               None)

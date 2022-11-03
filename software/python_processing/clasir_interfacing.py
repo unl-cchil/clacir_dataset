@@ -89,6 +89,17 @@ def binarize_dataset(dataset, labels):
     return binary_dataset, binary_labels
 
 
+def pose_active_passive(dataset, labels):
+    # 0 = Control | 1 = Precondition | 2 = HAI
+    trimmed_dataset, trimmed_labels = [], []
+    for x, y in zip(dataset, labels):
+        del_indxs = np.where(y == 1)[0]
+        trimmed_labels.append(np.delete(y, del_indxs, 0))
+        trimmed_dataset.append(np.delete(x, del_indxs, 0))
+        trimmed_labels[-1][trimmed_labels[-1] == 2] = 1
+    return trimmed_dataset, trimmed_labels
+
+
 def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False, dataset_name="clasir"):
     print("Collecting cLASIr dataset...")
     if os.path.exists(f'datasets/clasir_processed/{dataset_name}.pkl'):
@@ -156,4 +167,5 @@ def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=Fals
     remove_nan(datasets_array)
     datasets_array, labels_array = trim_data(datasets_array, labels_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
-    return (datasets_array, labels_array), (binary_dataset, binary_labels)
+    ap_dataset, ap_labels = pose_active_passive(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels), (ap_dataset, ap_labels)
