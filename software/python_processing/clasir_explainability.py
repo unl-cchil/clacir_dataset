@@ -70,7 +70,7 @@ def run_shapley_tests(dataset, features, experiment_name):
         os.mkdir(os.path.join('results', 'FI'))
     rng = np.random.RandomState(0)
     groups = []
-    for i in range(0, len(clasir_multi[0])):
+    for i in range(0, len(dataset[0])):
         group = np.ndarray(len(dataset[0][i]))
         group[:] = i
         groups.extend(group)

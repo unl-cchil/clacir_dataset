@@ -40,7 +40,7 @@ def regression_tests(datasets, experiment_name):
     for solver, penalty in zip(['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                                [['l2', 'none'], ['l2', 'none'], ['l1', 'l2'], ['l2', 'none'],
                                 ['elasticnet', 'l1', 'l2', 'none']]):
-        grid_values = {'penalty': penalty, 'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
+        grid_values = {'logisticregression__penalty': penalty, 'logisticregression__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
         pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver))
         grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
                                    error_score=np.nan, scoring=scoring, refit='AUPRC')
@@ -54,7 +54,7 @@ def regression_tests(datasets, experiment_name):
 
 if __name__ == '__main__':
     window_size = 5
-    clasir_noacc_multi, clasir_noacc_binary = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
+    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
                                                                                  dataset_name='clasir_no_acc')
     regression_tests(clasir_noacc_binary, "cLASIr Regression Binary")
 
