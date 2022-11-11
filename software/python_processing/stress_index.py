@@ -1,9 +1,8 @@
 # Possibly use Shapley values for model explainability
 # https://towardsdatascience.com/using-shap-values-to-explain-how-your-machine-learning-model-works-732b3f40e137
 # https://datascience.stackexchange.com/a/107710
-import os
-import pickle
 
+import os
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -30,9 +29,9 @@ def regression_tests(datasets, experiment_name):
         groups.extend(group)
     x = np.vstack(datasets[0])
     y = np.vstack(datasets[1]).ravel()
-    k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1).split(x, y, groups)
+
     scoring = {
-        "Cohen's Kappa": make_scorer(cohen_kappa_score, needs_proba=True),
+        # "Cohen's Kappa": make_scorer(cohen_kappa_score, needs_proba=False),
         "R2": make_scorer(r2_score, needs_proba=True),
         "ROC AUC": make_scorer(roc_auc_score, needs_proba=True),
         "AUPRC": make_scorer(calculate_auprc, needs_proba=True)
@@ -40,23 +39,30 @@ def regression_tests(datasets, experiment_name):
     for solver, penalty in zip(['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
                                [['l2', 'none'], ['l2', 'none'], ['l1', 'l2'], ['l2', 'none'],
                                 ['elasticnet', 'l1', 'l2', 'none']]):
-        grid_values = {'logisticregression__penalty': penalty, 'logisticregression__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
-        pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver))
-        grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
-                                   error_score=np.nan, scoring=scoring, refit='AUPRC')
-        clf = grid_search.fit(x, y)
-        pd.DataFrame(grid_search.cv_results_).to_excel(
-            os.path.join('results', str(experiment_name),
-                         f"{str(experiment_name)}_{solver}.xlsx"))
-        with open(os.path.join('results', str(experiment_name), f"{str(experiment_name)}_best.pkl"), 'wb') as f:
-            pickle.dump(clf, f)
+        if not os.path.exists(os.path.join('results', str(experiment_name),
+                                           f"{str(experiment_name)}_{solver}.xlsx")):
+            print(f"Running {experiment_name} with {solver} and {penalty}...")
+            k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1).split(x, y, groups)
+            grid_values = {'logisticregression__penalty': penalty,
+                           'logisticregression__C': [1, 10, 100, 1000],
+                           'logisticregression__max_iter': [100, 1000, 10000]}
+            pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver))
+            grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
+                                       error_score=np.nan, scoring=scoring, refit='AUPRC')
+            clf = grid_search.fit(x, y)
+            pd.DataFrame(grid_search.cv_results_).to_excel(
+                os.path.join('results', str(experiment_name),
+                             f"{str(experiment_name)}_{solver}.xlsx"))
 
 
 if __name__ == '__main__':
     window_size = 5
-    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size, exclude_acc=True,
-                                                                                 dataset_name='clasir_no_acc')
-    regression_tests(clasir_noacc_binary, "cLASIr Regression Binary")
+    _, clasir_binary, clasir_avp = clasir.windowed_feature_extraction(window_size)
+    _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
+                                                                                  exclude_acc=True,
+                                                                                  dataset_name='clasir_no_acc')
+    regression_tests(clasir_noacc_binary, "cLASIr Regression Binary, No Accelerometer")
+    regression_tests(clasir_noacc_avp, "cLASIr Regression AvP, No Accelerometer")
 
-    clasir_noacc_multi = (clasir_noacc_multi[0], clasir_noacc_multi[1] * 0.5)
-    regression_tests(clasir_noacc_multi, "cLASIr Regression Multi")
+    regression_tests(clasir_binary, "cLASIr Regression Binary")
+    regression_tests(clasir_avp, "cLASIr Regression AvP")
