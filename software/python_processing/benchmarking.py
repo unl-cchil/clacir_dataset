@@ -245,10 +245,15 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, featu
         pd.DataFrame(model_df).to_csv(
             os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
         if features is not None:
-            pd.DataFrame(feature_importance_df, index=features).transpose().to_csv(
-                os.path.join('results', str(experiment_name), f'{experiment_name}_fi.csv'))
+            features_df = pd.DataFrame(feature_importance_df, index=features).transpose()
+            features_df.to_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_fi.csv'))
+            features_df.describe().to_csv(
+                os.path.join(os.path.join('results', str(experiment_name), f'{experiment_name}_fi_explain.csv')))
     clf_results = {f"Experiment": experiment_name}
     results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
+    features_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_fi.csv'))
+    features_df.describe().to_csv(
+        os.path.join(os.path.join('results', str(experiment_name), f'{experiment_name}_fi_explain.csv')))
     clf_names = ['LDA', 'KNC', 'DTC', 'RFC', 'MLP']
     for i, row in results_df.iterrows():
         clf_name = clf_names[i]
@@ -373,14 +378,17 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
                 os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
             if features is not None:
                 get_feature_importance(best_models[-1], x[fi_ix], y[fi_ix], 'train', feature_importance_df)
-                pd.DataFrame(feature_importance_df, index=features).transpose().to_csv(
-                    os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi.csv'))
+                features_df = pd.DataFrame(feature_importance_df, index=features).transpose()
+                features_df.to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi.csv'))
+                features_df.describe().to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi_explain.csv'))
         with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'wb') as f:
             pickle.dump(best_models, f)
     with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'rb') as f:
         best_models = pickle.load(f)
     clf_results = {f"Experiment": experiment_name}
     for clf in classifiers:
+        features_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi.csv'))
+        features_df.describe().to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi_explain.csv'))
         clf_name = ''.join(filter(str.isupper, str(clf).split('(')[0]))
         results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
         if binary:
