@@ -66,8 +66,8 @@ feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_
 
 
 def run_shapley_tests(dataset, features, experiment_name):
-    if not os.path.exists(os.path.join('results', 'FI')):
-        os.mkdir(os.path.join('results', 'FI'))
+    if not os.path.exists(os.path.join('results', 'cLASIr Shapley')):
+        os.mkdir(os.path.join('results', 'cLASIr Shapley'))
     rng = np.random.RandomState(0)
     groups = []
     for i in range(0, len(dataset[0])):
@@ -89,11 +89,15 @@ def run_shapley_tests(dataset, features, experiment_name):
         model_coefs.append(base_model.named_steps['clf'].coef_[0])
         explainer = shap.Explainer(base_model.predict, x_test, feature_names=features)
         shap_values = explainer(x_test)
+        # shap.plots.bar(shap_values.abs.max(0), show=False)
+        # fig = gcf()
+        # fig.savefig(os.path.join('results', 'cLASIr Shapley', f'{experiment_name}_{len(model_coefs)}_bar.png'))
+        # fig.clear()
         shap.summary_plot(shap_values, plot_type='violin', show=False, feature_names=features)
         fig = gcf()
-        fig.savefig(os.path.join('results', 'FI', f'{experiment_name}_{len(model_coefs)}.png'))
+        fig.savefig(os.path.join('results', 'cLASIr Shapley', f'{experiment_name}_{len(model_coefs)}_beeswarm.png'))
         fig.clear()
-    pd.DataFrame(model_coefs, columns=features).to_excel(os.path.join('results', 'FI', f'{experiment_name}.xlsx'))
+    pd.DataFrame(model_coefs, columns=features).to_excel(os.path.join('results', 'cLASIr Shapley', f'{experiment_name}_modelcoefs.xlsx'))
 
 
 if __name__ == '__main__':

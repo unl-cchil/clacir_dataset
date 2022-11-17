@@ -42,10 +42,10 @@ def regression_tests(datasets, experiment_name):
         if not os.path.exists(os.path.join('results', str(experiment_name),
                                            f"{str(experiment_name)}_{solver}.xlsx")):
             print(f"Running {experiment_name} with {solver} and {penalty}...")
-            k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1).split(x, y, groups)
+            k_fold = StratifiedGroupKFold(n_splits=2, shuffle=True, random_state=1).split(x, y, groups)
             grid_values = {'logisticregression__penalty': penalty,
-                           'logisticregression__C': [1, 10, 100, 1000],
-                           'logisticregression__max_iter': [100, 1000, 10000]}
+                           'logisticregression__C': [0.01, 1, 10, 100],
+                           'logisticregression__max_iter': [1000]}
             pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver))
             grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
                                        error_score=np.nan, scoring=scoring, refit='AUPRC')
