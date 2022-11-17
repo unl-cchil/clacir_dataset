@@ -71,7 +71,119 @@ def remove_nan(dataset):
         dataset[i] = imp.fit_transform(dataset[i])
 
 
-def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False, dataset_name="wesad"):
+def get_raw_respiban_dataset():
+    if os.path.exists(f"datasets/wesad_processed/raw_dataset.pkl"):
+        with open(f"datasets/wesad_processed/raw_dataset.pkl", 'rb') as f:
+            dataset = pickle.load(f)
+        data, labels = dataset['data'], dataset['labels']
+    else:
+        subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
+        data, labels = [], []
+        for subject in range(0, len(subject_data)):
+            data.append([subject_data[subject]['signal']['chest']['ACC'],
+                         subject_data[subject]['signal']['chest']['ECG'],
+                         subject_data[subject]['signal']['chest']['EDA'],
+                         subject_data[subject]['signal']['chest']['Temp']])
+            labels.append(subject_data[subject]['label'])
+        with open(f'datasets/wesad_processed/raw_dataset.pkl', 'wb') as f:
+            pickle.dump({"data": data,
+                         "labels": labels}, f)
+    return data, labels
+
+
+def get_raw_e4_dataset():
+    if os.path.exists(f"datasets/wesad_processed/raw_dataset.pkl"):
+        with open(f"datasets/wesad_processed/raw_dataset.pkl", 'rb') as f:
+            dataset = pickle.load(f)
+        data, labels = dataset['data'], dataset['labels']
+    else:
+        subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
+        data, labels = [], []
+        for subject in range(0, len(subject_data)):
+            data.append([subject_data[subject]['signal']['wrist']['ACC'],
+                         subject_data[subject]['signal']['wrist']['BVP'],
+                         subject_data[subject]['signal']['wrist']['EDA'],
+                         subject_data[subject]['signal']['wrist']['TEMP']])
+            labels.append(subject_data[subject]['label'])
+        with open(f'datasets/wesad_processed/raw_dataset.pkl', 'wb') as f:
+            pickle.dump({"data": data,
+                         "labels": labels}, f)
+    return data, labels
+
+
+def respiban_windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False,
+                                         dataset_name="wesad_respiban"):
+    print("Collecting WESAD dataset...")
+    if os.path.exists(f'datasets/wesad_processed/{dataset_name}.pkl'):
+        print("Pickled WESAD dataset exists...\n")
+        with open(f'datasets/wesad_processed/{dataset_name}.pkl', 'rb') as f:
+            dataset = pickle.load(f)
+        datasets_array, labels_array = dataset['features'], dataset['labels']
+    else:
+        subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
+        # Initialize return lists
+        windowed_data = []
+        windowed_labels = []
+        # Initialize subject lists
+        subject_data_list = None
+        subject_label_list = None
+        window_data = []
+        # Signal window sizes
+        bvp_window_size = 700.0 * window_size
+        acc_window_size = 700.0 * window_size
+        eda_window_size = 700.0 * window_size
+        temp_window_size = 700.0 * window_size
+        label_window_size = 700.0 * window_size
+        # Iterate through the dataset types
+        print("Beginning sample processing...")
+        for subject in range(0, len(subject_data)):
+            print("Processing subject number:", subject)
+            bvp_generator = sp.split_set(subject_data[subject]['signal']['chest']['ECG'], bvp_window_size, 700.0)
+            eda_generator = sp.split_set(subject_data[subject]['signal']['chest']['EDA'], eda_window_size, 700.0)
+            acc_generator = sp.split_set(subject_data[subject]['signal']['chest']['ACC'], acc_window_size, 700.0)
+            temp_generator = sp.split_set(subject_data[subject]['signal']['chest']['Temp'], temp_window_size, 700.0)
+            label_generator = sp.split_set(subject_data[subject]['label'], label_window_size, 700.0)
+            for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator,
+                                                  label_generator):
+                if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
+                    continue
+                else:
+                    window_data.extend(get_e4_features(bvp, 'BVP'))
+                    window_data.extend(get_e4_features(eda, 'EDA'))
+                    if not exclude_acc:
+                        window_data.extend(get_e4_features(acc, 'ACC'))
+                    window_data.extend(get_e4_features(temp, 'TEMP'))
+                    window_label = np.around(np.average(label))
+                    if subject_data_list is None:
+                        subject_data_list = np.array(window_data)
+                    else:
+                        subject_data_list = np.vstack((subject_data_list, np.array(window_data)))
+                    if subject_label_list is None:
+                        subject_label_list = np.array(window_label)
+                    else:
+                        subject_label_list = np.vstack((subject_label_list, np.array(window_label)))
+                    window_data = []
+            windowed_data.append(subject_data_list)
+            windowed_labels.append(subject_label_list)
+            subject_data_list = None
+            subject_label_list = None
+
+        datasets_array = windowed_data
+        labels_array = windowed_labels
+
+        if write_pickle:
+            print("Currently pickling WESAD dataset...\n")
+            with open(f'datasets/wesad_processed/{dataset_name}.pkl', 'wb') as f:
+                pickle.dump({"features": datasets_array,
+                             "labels": labels_array}, f)
+
+    remove_nan(datasets_array)
+    datasets_array, labels_array = trim_data(datasets_array, labels_array)
+    binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels)
+
+
+def e4_windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False, dataset_name="wesad"):
     print("Collecting WESAD dataset...")
     if os.path.exists(f'datasets/wesad_processed/{dataset_name}.pkl'):
         print("Pickled WESAD dataset exists...\n")
@@ -102,7 +214,8 @@ def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=Fals
             acc_generator = sp.split_set(subject_data[subject]['signal']['wrist']['ACC'], acc_window_size, 32.0)
             temp_generator = sp.split_set(subject_data[subject]['signal']['wrist']['TEMP'], temp_window_size, 4.0)
             label_generator = sp.split_set(subject_data[subject]['label'], label_window_size, 700.0)
-            for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator, label_generator):
+            for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator,
+                                                  label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
