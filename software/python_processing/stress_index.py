@@ -6,7 +6,8 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import cohen_kappa_score, r2_score, roc_auc_score, auc, precision_recall_curve, make_scorer
+from sklearn.metrics import cohen_kappa_score, r2_score, roc_auc_score, auc, precision_recall_curve, make_scorer, \
+    accuracy_score, f1_score
 from sklearn.model_selection import GridSearchCV, StratifiedGroupKFold
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -32,21 +33,23 @@ def regression_tests(datasets, experiment_name):
 
     scoring = {
         # "Cohen's Kappa": make_scorer(cohen_kappa_score, needs_proba=False),
-        "R2": make_scorer(r2_score, needs_proba=True),
+        # "R2": make_scorer(r2_score, needs_proba=True),
+        "Accuracy": make_scorer(accuracy_score, needs_proba=False),
+        "F1 Score": make_scorer(f1_score, needs_proba=False),
         "ROC AUC": make_scorer(roc_auc_score, needs_proba=True),
         "AUPRC": make_scorer(calculate_auprc, needs_proba=True)
     }
-    for solver, penalty in zip(['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
-                               [['l2', 'none'], ['l2', 'none'], ['l1', 'l2'], ['l2', 'none'],
+    for solver, penalty in zip(['newton-cg', 'lbfgs', 'sag', 'saga'],
+                               [['l2', 'none'], ['l2', 'none'], ['l2', 'none'],
                                 ['elasticnet', 'l1', 'l2', 'none']]):
         if not os.path.exists(os.path.join('results', str(experiment_name),
                                            f"{str(experiment_name)}_{solver}.xlsx")):
             print(f"Running {experiment_name} with {solver} and {penalty}...")
-            k_fold = StratifiedGroupKFold(n_splits=2, shuffle=True, random_state=1).split(x, y, groups)
+            k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1).split(x, y, groups)
             grid_values = {'logisticregression__penalty': penalty,
                            'logisticregression__C': [0.01, 1, 10, 100],
                            'logisticregression__max_iter': [1000]}
-            pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver))
+            pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver, warm_start=True))
             grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
                                        error_score=np.nan, scoring=scoring, refit='AUPRC')
             clf = grid_search.fit(x, y)
