@@ -59,15 +59,20 @@ avp = False
 if __name__ == '__main__':
     window_size = 5
     if not avp:
-        _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
-                                                                                      exclude_acc=True,
-                                                                                      dataset_name='clasir_no_acc')
-        wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size,
-                                                                                     exclude_acc=True,
-                                                                                     dataset_name='wesad_no_acc')
-        case_multi, case_binary = case.windowed_feature_extraction(window_size)
+        _, clasir_noacc_binary, _ = clasir.windowed_feature_extraction(window_size,
+                                                                       exclude_acc=True,
+                                                                       dataset_name='clasir_no_acc')
+        _, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size,
+                                                                     exclude_acc=True,
+                                                                     dataset_name='wesad_no_acc')
+        _, case_binary = case.windowed_feature_extraction(window_size)
 
-        regression_tests(clasir_noacc_binary, "Full Dataset Regression Binary, No Accelerometer")
+        full_dataset = [
+            [clasir_noacc_binary[0] + wesad_noacc_binary[0] + case_binary[0]],
+            [clasir_noacc_binary[1] + wesad_noacc_binary[1] + case_binary[1]],
+        ]
+
+        regression_tests(full_dataset, "Full Dataset Regression Binary, No Accelerometer")
     else:
         _, clasir_binary, clasir_avp = clasir.windowed_feature_extraction(window_size)
         _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
