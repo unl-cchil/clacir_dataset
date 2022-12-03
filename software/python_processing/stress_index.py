@@ -1,7 +1,3 @@
-# Possibly use Shapley values for model explainability
-# https://towardsdatascience.com/using-shap-values-to-explain-how-your-machine-learning-model-works-732b3f40e137
-# https://datascience.stackexchange.com/a/107710
-
 import os
 import numpy as np
 import pandas as pd
