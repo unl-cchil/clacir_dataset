@@ -1,14 +1,17 @@
 import os
+
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import cohen_kappa_score, r2_score, roc_auc_score, auc, precision_recall_curve, make_scorer, \
+from sklearn.metrics import roc_auc_score, auc, precision_recall_curve, make_scorer, \
     accuracy_score, f1_score
 from sklearn.model_selection import GridSearchCV, StratifiedGroupKFold
-from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+import case_interfacing as case
 import clasir_interfacing as clasir
+import wesad_interfacing as wesad
 
 
 def calculate_auprc(y_true, y_probs):
@@ -28,8 +31,6 @@ def regression_tests(datasets, experiment_name):
     y = np.vstack(datasets[1]).ravel()
 
     scoring = {
-        # "Cohen's Kappa": make_scorer(cohen_kappa_score, needs_proba=False),
-        # "R2": make_scorer(r2_score, needs_proba=True),
         "Accuracy": make_scorer(accuracy_score, needs_proba=False),
         "F1 Score": make_scorer(f1_score, needs_proba=False),
         "ROC AUC": make_scorer(roc_auc_score, needs_proba=True),
@@ -54,14 +55,26 @@ def regression_tests(datasets, experiment_name):
                              f"{str(experiment_name)}_{solver}.xlsx"))
 
 
+avp = False
 if __name__ == '__main__':
     window_size = 5
-    _, clasir_binary, clasir_avp = clasir.windowed_feature_extraction(window_size)
-    _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
-                                                                                  exclude_acc=True,
-                                                                                  dataset_name='clasir_no_acc')
-    regression_tests(clasir_noacc_binary, "cLASIr Regression Binary, No Accelerometer")
-    regression_tests(clasir_noacc_avp, "cLASIr Regression AvP, No Accelerometer")
+    if not avp:
+        _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
+                                                                                      exclude_acc=True,
+                                                                                      dataset_name='clasir_no_acc')
+        wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size,
+                                                                                     exclude_acc=True,
+                                                                                     dataset_name='wesad_no_acc')
+        case_multi, case_binary = case.windowed_feature_extraction(window_size)
 
-    regression_tests(clasir_binary, "cLASIr Regression Binary")
-    regression_tests(clasir_avp, "cLASIr Regression AvP")
+        regression_tests(clasir_noacc_binary, "Full Dataset Regression Binary, No Accelerometer")
+    else:
+        _, clasir_binary, clasir_avp = clasir.windowed_feature_extraction(window_size)
+        _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
+                                                                                      exclude_acc=True,
+                                                                                      dataset_name='clasir_no_acc')
+        regression_tests(clasir_noacc_binary, "cLASIr Regression Binary, No Accelerometer")
+        regression_tests(clasir_noacc_avp, "cLASIr Regression AvP, No Accelerometer")
+
+        regression_tests(clasir_binary, "cLASIr Regression Binary")
+        regression_tests(clasir_avp, "cLASIr Regression AvP")
