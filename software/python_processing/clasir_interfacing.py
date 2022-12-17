@@ -100,11 +100,14 @@ def pose_active_passive(dataset, labels):
     return trimmed_dataset, trimmed_labels
 
 
-def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=False, dataset_name="clasir"):
+def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None, dataset_name="clasir"):
+    if datastreams is None:
+        datastreams = [True, True, True, True]
     print("Collecting cLASIr dataset...")
-    if os.path.exists(f'datasets/clasir_processed/{dataset_name}.pkl'):
+    dataset_path = f'datasets/clasir_processed/{dataset_name + "_".join([str(int(i)) for i in datastreams])}.pkl'
+    if os.path.exists(dataset_path):
         print("Pickled cLASIr dataset exists...\n")
-        with open(f'datasets/clasir_processed/{dataset_name}.pkl', 'rb') as f:
+        with open(dataset_path, 'rb') as f:
             dataset = pickle.load(f)
         datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
@@ -135,11 +138,14 @@ def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=Fals
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
-                    window_data.extend(get_e4_features(bvp, 'BVP'))
-                    window_data.extend(get_e4_features(eda, 'EDA'))
-                    if not exclude_acc:
+                    if datastreams[0]:
+                        window_data.extend(get_e4_features(bvp, 'BVP'))
+                    if datastreams[1]:
+                        window_data.extend(get_e4_features(eda, 'EDA'))
+                    if datastreams[2]:
                         window_data.extend(get_e4_features(acc, 'ACC'))
-                    window_data.extend(get_e4_features(temp, 'TEMP'))
+                    if datastreams[3]:
+                        window_data.extend(get_e4_features(temp, 'TEMP'))
                     window_label = label[int((len(label) / 2.0) + 0.5) - 1]
                     if subject_data_list is None:
                         subject_data_list = np.array(window_data)
@@ -160,7 +166,7 @@ def windowed_feature_extraction(window_size, write_pickle=True, exclude_acc=Fals
 
         if write_pickle:
             print("Currently pickling cLASIr dataset...\n")
-            with open(f'datasets/clasir_processed/{dataset_name}.pkl', 'wb') as f:
+            with open(dataset_path, 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
 

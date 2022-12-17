@@ -62,11 +62,14 @@ def remove_nan(dataset):
         dataset[i] = imp.fit_transform(dataset[i])
 
 
-def windowed_feature_extraction(window_size, write_pickle=True, dataset_name="case"):
+def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None, dataset_name="case"):
+    if datastreams is None:
+        datastreams = [True, True, True, True]
     print("Collecting CASE dataset...")
-    if os.path.exists(f'datasets/case_processed/{dataset_name}.pkl'):
+    dataset_path = f'datasets/case_processed/{dataset_name + "_".join([str(int(i)) for i in datastreams])}.pkl'
+    if os.path.exists(dataset_path):
         print("Pickled CASE dataset exists...\n")
-        with open(f'datasets/case_processed/{dataset_name}.pkl', 'rb') as f:
+        with open(dataset_path, 'rb') as f:
             dataset = pickle.load(f)
         datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
@@ -95,9 +98,12 @@ def windowed_feature_extraction(window_size, write_pickle=True, dataset_name="ca
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
-                    window_data.extend(get_e4_features(bvp, 'BVP'))
-                    window_data.extend(get_e4_features(eda, 'EDA'))
-                    window_data.extend(get_e4_features(temp, 'TEMP'))
+                    if datastreams[0]:
+                        window_data.extend(get_e4_features(bvp, 'BVP'))
+                    if datastreams[1]:
+                        window_data.extend(get_e4_features(eda, 'EDA'))
+                    if datastreams[3]:
+                        window_data.extend(get_e4_features(temp, 'TEMP'))
                     window_label = get_e4_labels(label)
                     if subject_data_list is None:
                         subject_data_list = np.array(window_data)
@@ -118,7 +124,7 @@ def windowed_feature_extraction(window_size, write_pickle=True, dataset_name="ca
 
         if write_pickle:
             print("Currently pickling CASE dataset...\n")
-            with open(f'datasets/case_processed/{dataset_name}.pkl', 'wb') as f:
+            with open(dataset_path, 'wb') as f:
                 pickle.dump({"features": datasets_array,
                              "labels": labels_array}, f)
 

@@ -420,35 +420,35 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
     return report_df, best_models
 
 
+no_temp_ds = [True, True, True, False]
+no_temp_acc_ds = [True, True, False, False]
 if __name__ == '__main__':
     # Generate datasets
     window_size = 5
-    wesad_r_multi, wesad_r_binary = wesad.respiban_windowed_feature_extraction(window_size)
+    wesad_r_multi, wesad_r_binary = wesad.respiban_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(wesad_r_multi, "WESAD Respiban Dataset Multi")
     get_dataset_stats(wesad_r_binary, "WESAD Respiban Dataset Binary")
-    wesad_r_noacc_multi, wesad_r_noacc_binary = wesad.respiban_windowed_feature_extraction(window_size,
-                                                                                           exclude_acc=True,
-                                                                                           dataset_name='wesad_respiban_no_acc')
+    wesad_r_noacc_multi, wesad_r_noacc_binary = wesad.respiban_windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
     get_dataset_stats(wesad_r_noacc_multi, "WESAD Respiban No Acc Multi")
     get_dataset_stats(wesad_r_noacc_binary, "WESAD Respiban No Acc Binary")
-    wesad_multi, wesad_binary = wesad.e4_windowed_feature_extraction(window_size)
+
+    wesad_multi, wesad_binary = wesad.e4_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(wesad_multi, "WESAD Dataset Multi")
     get_dataset_stats(wesad_binary, "WESAD Dataset Binary")
-    wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size, exclude_acc=True,
-                                                                                 dataset_name='wesad_no_acc')
+    wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
     get_dataset_stats(wesad_noacc_multi, "WESAD No Acc Multi")
     get_dataset_stats(wesad_noacc_binary, "WESAD No Acc Binary")
-    clasir_multi, clasir_binary, clasir_ap = clasir.windowed_feature_extraction(window_size)
+
+    clasir_multi, clasir_binary, clasir_ap = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(clasir_multi, "cLASIr Dataset Multi")
     get_dataset_stats(clasir_binary, "cLASIr Dataset Binary")
     get_dataset_stats(clasir_ap, "cLASIr Dataset AP")
-    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap = clasir.windowed_feature_extraction(window_size,
-                                                                                                  exclude_acc=True,
-                                                                                                  dataset_name='clasir_no_acc')
+    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
     get_dataset_stats(clasir_noacc_binary, "cLASIr No Acc Binary")
     get_dataset_stats(clasir_noacc_multi, "cLASIr No Acc Multi")
     get_dataset_stats(clasir_noacc_ap, "cLASIr No Acc AP")
-    case_multi, case_binary = case.windowed_feature_extraction(window_size)
+    
+    case_multi, case_binary = case.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(case_multi, "CASE Dataset Multi")
     get_dataset_stats(case_binary, "CASE Dataset Binary")
 
