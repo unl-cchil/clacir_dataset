@@ -45,7 +45,7 @@ def regression_tests(datasets, experiment_name):
             k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1).split(x, y, groups)
             grid_values = {'logisticregression__penalty': penalty,
                            'logisticregression__C': [0.01, 1, 10, 100],
-                           'logisticregression__max_iter': [1000]}
+                           'logisticregression__max_iter': [250]}
             pipe = make_pipeline(StandardScaler(), LogisticRegression(solver=solver, warm_start=True))
             grid_search = GridSearchCV(pipe, param_grid=grid_values, cv=k_fold, n_jobs=-1,
                                        error_score=np.nan, scoring=scoring, refit='AUPRC')
@@ -68,8 +68,8 @@ if __name__ == '__main__':
         _, case_binary = case.windowed_feature_extraction(window_size)
 
         full_dataset = [
-            [clasir_noacc_binary[0] + wesad_noacc_binary[0] + case_binary[0]],
-            [clasir_noacc_binary[1] + wesad_noacc_binary[1] + case_binary[1]],
+            clasir_noacc_binary[0] + wesad_noacc_binary[0] + case_binary[0],
+            clasir_noacc_binary[1] + wesad_noacc_binary[1] + case_binary[1],
         ]
 
         regression_tests(full_dataset, "Full Dataset Regression Binary, No Accelerometer")
