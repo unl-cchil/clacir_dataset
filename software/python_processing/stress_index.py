@@ -55,17 +55,17 @@ def regression_tests(datasets, experiment_name):
                              f"{str(experiment_name)}_{solver}.xlsx"))
 
 
-avp = False
+no_temp_ds = [True, True, True, False]
+no_temp_acc_ds = [True, True, False, False]
+avp = True
 if __name__ == '__main__':
     window_size = 5
     if not avp:
         _, clasir_noacc_binary, _ = clasir.windowed_feature_extraction(window_size,
-                                                                       exclude_acc=True,
-                                                                       dataset_name='clasir_no_acc')
+                                                                       datastreams=no_temp_acc_ds)
         _, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size,
-                                                                     exclude_acc=True,
-                                                                     dataset_name='wesad_no_acc')
-        _, case_binary = case.windowed_feature_extraction(window_size)
+                                                                     datastreams=no_temp_acc_ds)
+        _, case_binary = case.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
 
         full_dataset = [
             clasir_noacc_binary[0] + wesad_noacc_binary[0] + case_binary[0],
@@ -74,10 +74,9 @@ if __name__ == '__main__':
 
         regression_tests(full_dataset, "Full Dataset Regression Binary, No Accelerometer")
     else:
-        _, clasir_binary, clasir_avp = clasir.windowed_feature_extraction(window_size)
+        _, clasir_binary, clasir_avp = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
         _, clasir_noacc_binary, clasir_noacc_avp = clasir.windowed_feature_extraction(window_size,
-                                                                                      exclude_acc=True,
-                                                                                      dataset_name='clasir_no_acc')
+                                                                                      datastreams=no_temp_acc_ds)
         regression_tests(clasir_noacc_binary, "cLASIr Regression Binary, No Accelerometer")
         regression_tests(clasir_noacc_avp, "cLASIr Regression AvP, No Accelerometer")
 

@@ -78,11 +78,7 @@ feature_names = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 
                  'accy_svd_entropy', 'accz_mean', 'accz_std', 'accz_min', 'accz_max', 'accz_ptp', 'accz_sum',
                  'accz_energy', 'accz_skewness', 'accz_kurtosis', 'accz_peaks', 'accz_rms', 'accz_lineintegral',
                  'accz_n_above_mean', 'accz_n_below_mean', 'accz_n_sign_changes', 'accz_iqr', 'accz_iqr_5_95',
-                 'accz_pct_5', 'accz_pct_95', 'accz_entropy', 'accz_perm_entropy', 'accz_svd_entropy', 'tmp_mean',
-                 'tmp_std', 'tmp_min', 'tmp_max', 'tmp_ptp', 'tmp_sum', 'tmp_energy', 'tmp_skewness', 'tmp_kurtosis',
-                 'tmp_peaks', 'tmp_rms', 'tmp_lineintegral', 'tmp_n_above_mean', 'tmp_n_below_mean',
-                 'tmp_n_sign_changes', 'tmp_iqr', 'tmp_iqr_5_95', 'tmp_pct_5', 'tmp_pct_95', 'tmp_entropy',
-                 'tmp_perm_entropy', 'tmp_svd_entropy'
+                 'accz_pct_5', 'accz_pct_95', 'accz_entropy', 'accz_perm_entropy', 'accz_svd_entropy'
                  ]
 
 feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 'hrv_rmssd', 'hrv_nni_50',
@@ -100,10 +96,7 @@ feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_
                         'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks',
                         'eda_rms', 'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes',
                         'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy',
-                        'eda_svd_entropy', 'tmp_mean', 'tmp_std', 'tmp_min', 'tmp_max', 'tmp_ptp', 'tmp_sum',
-                        'tmp_energy', 'tmp_skewness', 'tmp_kurtosis', 'tmp_peaks', 'tmp_rms', 'tmp_lineintegral',
-                        'tmp_n_above_mean', 'tmp_n_below_mean', 'tmp_n_sign_changes', 'tmp_iqr', 'tmp_iqr_5_95',
-                        'tmp_pct_5', 'tmp_pct_95', 'tmp_entropy', 'tmp_perm_entropy', 'tmp_svd_entropy'
+                        'eda_svd_entropy'
                         ]
 
 

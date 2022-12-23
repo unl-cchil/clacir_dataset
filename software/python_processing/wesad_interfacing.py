@@ -123,7 +123,7 @@ def respiban_windowed_feature_extraction(window_size, write_pickle=True, datastr
             dataset = pickle.load(f)
         datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
-        subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
+        subject_data = load_wesad_dataset(r"D:\Datasets\WESAD/")
         # Initialize return lists
         windowed_data = []
         windowed_labels = []
@@ -200,7 +200,7 @@ def e4_windowed_feature_extraction(window_size, write_pickle=True, datastreams=N
             dataset = pickle.load(f)
         datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
-        subject_data = load_wesad_dataset(r"E:\Datasets\WESAD/")
+        subject_data = load_wesad_dataset(r"D:\Datasets\WESAD/")
         # Initialize return lists
         windowed_data = []
         windowed_labels = []
