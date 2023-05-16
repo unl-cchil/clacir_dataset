@@ -90,16 +90,20 @@ def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None
         print("Beginning sample processing...")
         for subject in range(0, len(subject_data)):
             print("Processing subject number:", subject)
-            bvp_generator = sp.split_set(subject_data[subject][1], bvp_window_size, 1000)
-            eda_generator = sp.split_set(subject_data[subject][2], eda_window_size, 1000)
-            temp_generator = sp.split_set(subject_data[subject][3], temp_window_size, 1000)
-            label_generator = sp.split_set(annotations[subject][4], label_window_size, 20)
+            bvp_generator = sp.split_set(subject_data[subject][1], bvp_window_size, 1000 / 4)
+            eda_generator = sp.split_set(subject_data[subject][2], eda_window_size, 1000 / 4)
+            temp_generator = sp.split_set(subject_data[subject][3], temp_window_size, 1000 / 4)
+            label_generator = sp.split_set(annotations[subject][4], label_window_size, 20 / 4)
             for bvp, eda, temp, label in zip(bvp_generator, eda_generator, temp_generator, label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
                     if datastreams[0]:
-                        window_data.extend(get_e4_features(bvp, 'BVP'))
+                        features = get_e4_features(bvp, 'BVP', 1000.0)
+                        if features:
+                            window_data.extend(features)
+                        else:
+                            continue
                     if datastreams[1]:
                         window_data.extend(get_e4_features(eda, 'EDA'))
                     if datastreams[3]:

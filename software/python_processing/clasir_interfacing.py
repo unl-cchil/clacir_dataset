@@ -70,6 +70,7 @@ def remove_nan(dataset):
 
 def trim_data(dataset, labels):
     # 0 = N/A | 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
+    # Control is considered neutral, precondition is cognitive load/stress, HAI is amusement
     trimmed_dataset, trimmed_labels = [], []
     for x, y in zip(dataset, labels):
         del_indxs = np.hstack((np.where(y == 0.0)[0], np.where(y >= 4)[0]))
@@ -139,7 +140,11 @@ def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None
                     continue
                 else:
                     if datastreams[0]:
-                        window_data.extend(get_e4_features(bvp, 'BVP'))
+                        features = get_e4_features(bvp, 'BVP')
+                        if features:
+                            window_data.extend(features)
+                        else:
+                            continue
                     if datastreams[1]:
                         window_data.extend(get_e4_features(eda, 'EDA'))
                     if datastreams[2]:

@@ -1,7 +1,7 @@
 """
-cognitive Load and Subsequent Intervention recognition (cLASIr) Dataset Benchmarking
+cognitive Load and Canine Intervention recognition (cLACIr) Dataset Benchmarking
 
-    This script compares the baseline performance of cLASIr in comparison to the Wearable Stress and Affect Detection
+    This script compares the baseline performance of cLACIr in comparison to the Wearable Stress and Affect Detection
     (WESAD) and Continuously Annotated Signals of Emotion (CASE) datasets using a suite of models including linear
     discriminators, neural networks, nearest neighbor heuristic, ensemble learning, and decision trees in both binary
     and multiclass tasks.
@@ -10,10 +10,10 @@ cognitive Load and Subsequent Intervention recognition (cLASIr) Dataset Benchmar
     different subjects, methodologies, and sensors were used simultaneously.  Finally, all three datasets are combined.
 
     The reported measures are top-1 accuracy, F1 score, TPR @ 5% FPR, TPR @ 10% FPR, Equal Error Rate, Area Under the
-    Receiver Operating Characteristic Curve, and Area Under the Precision Recall Curve.  These metrics are generated
-    for each fold of a 10-fold, stratified, identity split, cross validation.  The metrics are reported as the averages
-    with standard deviation in a final output Excel spreadsheet for each classifier, separated by binary versus
-    multiclass.
+    Receiver Operating Characteristic Curve, Cohen's Kappa, and Area Under the Precision Recall Curve.  These metrics
+    are generated for each fold of a 10-fold, stratified, identity split, cross validation.  The metrics are reported
+    as the averages with standard deviation in a final output Excel spreadsheet for each classifier, separated by
+    binary versus multiclass.
 
     Additionally, raw classification tables and a confusion matrix is generated for the best of the trained models in
     the 10-fold split and permutation feature importance is performed for each fold and ten iterations are performed.
@@ -22,14 +22,16 @@ cognitive Load and Subsequent Intervention recognition (cLASIr) Dataset Benchmar
     classification task in the 'results' folder, the script assumes that task has been completed previously and will
     skip it.
 
-Author: Walker Arce
-Date:   7 Sep 2022
+Author:     Walker Arce
+Version:    3
+Date:       17 Mar 2023
 """
 
 import warnings
 
 from scipy.interpolate import interp1d
 from scipy.optimize import brentq
+from sklearn import metrics
 from sklearn.neural_network import MLPClassifier
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -42,7 +44,7 @@ import pandas as pd
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, roc_curve, average_precision_score, \
-    confusion_matrix, precision_recall_curve, auc, cohen_kappa_score
+    confusion_matrix, precision_recall_curve, auc, cohen_kappa_score, balanced_accuracy_score
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
@@ -54,20 +56,22 @@ import case_interfacing as case
 import clasir_interfacing as clasir
 import wesad_interfacing as wesad
 
-feature_names = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 'hrv_rmssd', 'hrv_nni_50',
-                 'hrv_pnni_50', 'hrv_nni_20', 'hrv_pnni_20', 'hrv_cvsd', 'hrv_sdnn', 'hrv_cvnni', 'hrv_mean_hr',
-                 'hrv_min_hr', 'hrv_max_hr', 'hrv_std_hr', 'hrv_SD1', 'hrv_SD2', 'hrv_SD2SD1', 'hrv_CSI', 'hrv_CVI',
-                 'hrv_CSI_Modified', 'hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp', 'hrv_sum', 'hrv_energy',
+
+feature_names = ['hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp', 'hrv_sum', 'hrv_energy',
                  'hrv_skewness', 'hrv_kurtosis', 'hrv_peaks', 'hrv_rms', 'hrv_lineintegral', 'hrv_n_above_mean',
                  'hrv_n_below_mean', 'hrv_n_sign_changes', 'hrv_iqr', 'hrv_iqr_5_95', 'hrv_pct_5', 'hrv_pct_95',
-                 'hrv_entropy', 'hrv_perm_entropy', 'hrv_svd_entropy', 'hrv_total_power', 'hrv_vlf', 'hrv_lf', 'hrv_hf',
-                 'hrv_lf_hf_ratio', 'hrv_lfnu', 'hrv_hfnu', 'eda_mean', 'eda_std', 'eda_min', 'eda_max', 'eda_ptp',
-                 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks', 'eda_rms', 'eda_lineintegral',
-                 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5',
-                 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy', 'eda_mean', 'eda_std', 'eda_min',
-                 'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks', 'eda_rms',
-                 'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr',
-                 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy',
+                 'hrv_entropy', 'hrv_perm_entropy', 'hrv_svd_entropy',
+
+                 'scl_mean', 'scl_std', 'scl_min', 'scl_max', 'scl_ptp',
+                 'scl_sum', 'scl_energy', 'scl_skewness', 'scl_kurtosis', 'scl_peaks', 'scl_rms', 'scl_lineintegral',
+                 'scl_n_above_mean', 'scl_n_below_mean', 'scl_n_sign_changes', 'scl_iqr', 'scl_iqr_5_95', 'scl_pct_5',
+                 'scl_pct_95', 'scl_entropy', 'scl_perm_entropy', 'scl_svd_entropy',
+
+                 'scr_mean', 'scr_std', 'scr_min',
+                 'scr_max', 'scr_ptp', 'scr_sum', 'scr_energy', 'scr_skewness', 'scr_kurtosis', 'scr_peaks', 'scr_rms',
+                 'scr_lineintegral', 'scr_n_above_mean', 'scr_n_below_mean', 'scr_n_sign_changes', 'scr_iqr',
+                 'scr_iqr_5_95', 'scr_pct_5', 'scr_pct_95', 'scr_entropy', 'scr_perm_entropy', 'scr_svd_entropy',
+
                  'accx_mean', 'accx_std', 'accx_min', 'accx_max', 'accx_ptp', 'accx_sum', 'accx_energy',
                  'accx_skewness', 'accx_kurtosis', 'accx_peaks', 'accx_rms', 'accx_lineintegral', 'accx_n_above_mean',
                  'accx_n_below_mean', 'accx_n_sign_changes', 'accx_iqr', 'accx_iqr_5_95', 'accx_pct_5', 'accx_pct_95',
@@ -81,22 +85,23 @@ feature_names = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 
                  'accz_pct_5', 'accz_pct_95', 'accz_entropy', 'accz_perm_entropy', 'accz_svd_entropy'
                  ]
 
-feature_names_no_acc = ['hrv_mean_nni', 'hrv_median_nni', 'hrv_range_nni', 'hrv_sdsd', 'hrv_rmssd', 'hrv_nni_50',
-                        'hrv_pnni_50', 'hrv_nni_20', 'hrv_pnni_20', 'hrv_cvsd', 'hrv_sdnn', 'hrv_cvnni', 'hrv_mean_hr',
-                        'hrv_min_hr', 'hrv_max_hr', 'hrv_std_hr', 'hrv_SD1', 'hrv_SD2', 'hrv_SD2SD1', 'hrv_CSI',
-                        'hrv_CVI', 'hrv_CSI_Modified', 'hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp',
-                        'hrv_sum', 'hrv_energy', 'hrv_skewness', 'hrv_kurtosis', 'hrv_peaks', 'hrv_rms',
-                        'hrv_lineintegral', 'hrv_n_above_mean', 'hrv_n_below_mean', 'hrv_n_sign_changes', 'hrv_iqr',
-                        'hrv_iqr_5_95', 'hrv_pct_5', 'hrv_pct_95', 'hrv_entropy', 'hrv_perm_entropy', 'hrv_svd_entropy',
-                        'hrv_total_power', 'hrv_vlf', 'hrv_lf', 'hrv_hf', 'hrv_lf_hf_ratio', 'hrv_lfnu', 'hrv_hfnu',
-                        'eda_mean', 'eda_std', 'eda_min', 'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness',
-                        'eda_kurtosis', 'eda_peaks', 'eda_rms', 'eda_lineintegral', 'eda_n_above_mean',
-                        'eda_n_below_mean', 'eda_n_sign_changes', 'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95',
-                        'eda_entropy', 'eda_perm_entropy', 'eda_svd_entropy', 'eda_mean', 'eda_std', 'eda_min',
-                        'eda_max', 'eda_ptp', 'eda_sum', 'eda_energy', 'eda_skewness', 'eda_kurtosis', 'eda_peaks',
-                        'eda_rms', 'eda_lineintegral', 'eda_n_above_mean', 'eda_n_below_mean', 'eda_n_sign_changes',
-                        'eda_iqr', 'eda_iqr_5_95', 'eda_pct_5', 'eda_pct_95', 'eda_entropy', 'eda_perm_entropy',
-                        'eda_svd_entropy'
+feature_names_no_acc = ['hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp', 'hrv_sum', 'hrv_energy',
+                        'hrv_skewness', 'hrv_kurtosis', 'hrv_peaks', 'hrv_rms', 'hrv_lineintegral', 'hrv_n_above_mean',
+                        'hrv_n_below_mean', 'hrv_n_sign_changes', 'hrv_iqr', 'hrv_iqr_5_95', 'hrv_pct_5', 'hrv_pct_95',
+                        'hrv_entropy', 'hrv_perm_entropy', 'hrv_svd_entropy',
+
+                        'scl_mean', 'scl_std', 'scl_min', 'scl_max', 'scl_ptp',
+                        'scl_sum', 'scl_energy', 'scl_skewness', 'scl_kurtosis', 'scl_peaks', 'scl_rms',
+                        'scl_lineintegral',
+                        'scl_n_above_mean', 'scl_n_below_mean', 'scl_n_sign_changes', 'scl_iqr', 'scl_iqr_5_95',
+                        'scl_pct_5',
+                        'scl_pct_95', 'scl_entropy', 'scl_perm_entropy', 'scl_svd_entropy',
+
+                        'scr_mean', 'scr_std', 'scr_min',
+                        'scr_max', 'scr_ptp', 'scr_sum', 'scr_energy', 'scr_skewness', 'scr_kurtosis', 'scr_peaks',
+                        'scr_rms',
+                        'scr_lineintegral', 'scr_n_above_mean', 'scr_n_below_mean', 'scr_n_sign_changes', 'scr_iqr',
+                        'scr_iqr_5_95', 'scr_pct_5', 'scr_pct_95', 'scr_entropy', 'scr_perm_entropy', 'scr_svd_entropy',
                         ]
 
 
@@ -193,11 +198,11 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, featu
         if binary:
             model_df = dict(
                 (sub, []) for sub in
-                ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
+                ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
         else:
             model_df = dict(
                 (sub, []) for sub in
-                ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Model'])
+                ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'Kappa', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Model'])
         for clf in clfs:
             print(f"Testing {str(clf)} on {experiment_name}")
             y_hat_probs = clf.predict_proba(x_test)
@@ -232,7 +237,8 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, featu
                 model_df['mTPR@5%FPR'].append(float(tpr_5_per) / 3.0)
                 model_df['mAUC'].append(float(roc_auc) / 3.0)
                 model_df['mAUPRC'].append(float(pr_auc) / 3.0)
-            model_df['Accuracy'].append(accuracy_score(y_test, y_hat))
+            model_df['Accuracy'].append(balanced_accuracy_score(y_test, y_hat))
+            model_df['Kappa'].append(cohen_kappa_score(y_test, y_hat))
             model_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
             model_df['Model'].append(str(clf))
         pd.DataFrame(model_df).to_csv(
@@ -247,30 +253,32 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, report_df, featu
     features_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_fi.csv'))
     features_df.describe().to_csv(
         os.path.join(os.path.join('results', str(experiment_name), f'{experiment_name}_fi_explain.csv')))
-    clf_names = ['LDA', 'KNC', 'DTC', 'RFC', 'MLP']
+    clf_names = ['LDA', 'DTC', 'RFC', 'MLP']
     for i, row in results_df.iterrows():
         clf_name = clf_names[i]
         if binary:
             clf_results.update({
-                f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
-                f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
-                f"{clf_name} AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
-                f"{clf_name} AP": f"{np.mean(results_df['AP']) * 100:.2f} \u00B1 {np.std(results_df['AP']) * 100:.2f}",
-                f"{clf_name} AUPRC": f"{np.mean(results_df['AUPRC']) * 100:.2f} \u00B1 {np.std(results_df['AUPRC']) * 100:.2f}",
-                f"{clf_name} EER": f"{np.mean(results_df['EER']) * 100:.2f} \u00B1 {np.std(results_df['EER']) * 100:.2f}",
-                f"{clf_name} TPR@10%FPR": f"{np.mean(results_df['TPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@1%FPR']) * 100:.2f}",
-                f"{clf_name} TPR@5%FPR": f"{np.mean(results_df['TPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@5%FPR']) * 100:.2f}",
+                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f}",
+                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f}",
+                f"{clf_name} AUC": f"{row['AUC'] * 100:.2f}",
+                f"{clf_name} AP": f"{row['AP'] * 100:.2f}",
+                f"{clf_name} AUPRC": f"{row['AUPRC'] * 100:.2f}",
+                f"{clf_name} EER": f"{row['EER'] * 100:.2f}",
+                f"{clf_name} Kappa": f"{row['Kappa']:.4f}",
+                f"{clf_name} TPR@10%FPR": f"{row['TPR@1%FPR'] * 100:.2f}",
+                f"{clf_name} TPR@5%FPR": f"{row['TPR@5%FPR'] * 100:.2f}",
             })
         else:
             clf_results.update({
-                f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
-                f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
-                f"{clf_name} mAUC": f"{np.mean(results_df['mAUC']) * 100:.2f} \u00B1 {np.std(results_df['mAUC']) * 100:.2f}",
-                f"{clf_name} mAP": f"{np.mean(results_df['mAP']) * 100:.2f} \u00B1 {np.std(results_df['mAP']) * 100:.2f}",
-                f"{clf_name} mAUPRC": f"{np.mean(results_df['mAUPRC']) * 100:.2f} \u00B1 {np.std(results_df['mAUPRC']) * 100:.2f}",
-                f"{clf_name} mEER": f"{np.mean(results_df['mEER']) * 100:.2f} \u00B1 {np.std(results_df['mEER']) * 100:.2f}",
-                f"{clf_name} mTPR@10%FPR": f"{np.mean(results_df['mTPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@1%FPR']) * 100:.2f}",
-                f"{clf_name} mTPR@5%FPR": f"{np.mean(results_df['mTPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@5%FPR']) * 100:.2f}",
+                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f}",
+                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f}",
+                f"{clf_name} mAUC": f"{row['mAUC'] * 100:.2f}",
+                f"{clf_name} mAP": f"{row['mAP'] * 100:.2f}",
+                f"{clf_name} mAUPRC": f"{row['mAUPRC'] * 100:.2f}",
+                f"{clf_name} mEER": f"{row['mEER'] * 100:.2f}",
+                f"{clf_name} Kappa": f"{row['Kappa']:.4f}",
+                f"{clf_name} mTPR@10%FPR": f"{row['mTPR@1%FPR'] * 100:.2f}",
+                f"{clf_name} mTPR@5%FPR": f"{row['mTPR@5%FPR'] * 100:.2f}",
             })
     return report_df.append(clf_results, ignore_index=True)
 
@@ -297,6 +305,7 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
             groups.extend(group)
         x = np.vstack(datasets[0])
         y = np.vstack(datasets[1]).ravel()
+        groups = np.array(groups)
 
         best_models = []
         for clf in classifiers:
@@ -313,6 +322,8 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
                     (sub, []) for sub in
                     ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'Kappa', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER',
                      'Fitted Models', 'Test IX'])
+            best_models_roc = []
+
             print(f"Testing {str(clf)} on {experiment_name}")
             pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('clf', clf)])
             for train_ix, test_ix in k_fold.split(x, y, groups=groups):
@@ -323,16 +334,18 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
                 model = pipeline.fit(train_x, train_y)
                 y_hat_probs = model.predict_proba(x_test)
                 y_hat = np.argmax(y_hat_probs, axis=1)
+                best_models_roc.append((y_hat_probs, y_test))
+                y_val = y_test
 
                 if binary:
-                    k_fold_df['AP'].append(average_precision_score(y_test, y_hat_probs[:, 1], average='weighted'))
-                    k_fold_df['AUC'].append(roc_auc_score(y_test, y_hat_probs[:, 1], average='weighted'))
-                    k_fold_df['EER'].append(calculate_eer(y_test, y_hat_probs[:, 1]))
-                    k_fold_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_test, y_hat_probs[:, 1]))
-                    k_fold_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_test, y_hat_probs[:, 1]))
-                    k_fold_df['AUPRC'].append(calculate_auprc(y_test, y_hat_probs[:, 1]))
+                    k_fold_df['AP'].append(average_precision_score(y_val, y_hat_probs[:, 1], average='weighted'))
+                    k_fold_df['AUC'].append(roc_auc_score(y_val, y_hat_probs[:, 1], average='weighted'))
+                    k_fold_df['EER'].append(calculate_eer(y_val, y_hat_probs[:, 1]))
+                    k_fold_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_val, y_hat_probs[:, 1]))
+                    k_fold_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_val, y_hat_probs[:, 1]))
+                    k_fold_df['AUPRC'].append(calculate_auprc(y_val, y_hat_probs[:, 1]))
                 else:
-                    y_score = label_binarize(y_test, classes=[0, 1, 2])
+                    y_score = label_binarize(y_val, classes=[0, 1, 2])
                     mean_average_precision = 0
                     eer = 0
                     tpr_1_per, tpr_5_per = 0, 0
@@ -352,17 +365,27 @@ def train_fresh_models(datasets, experiment_name, report_df, features=None, bina
                     k_fold_df['mTPR@5%FPR'].append(float(tpr_5_per) / 3.0)
                     k_fold_df['mAUC'].append(float(roc_auc) / 3.0)
                     k_fold_df['mAUPRC'].append(float(pr_auc) / 3.0)
-                k_fold_df['Accuracy'].append(accuracy_score(y_test, y_hat))
-                k_fold_df['Kappa'].append(cohen_kappa_score(y_test, y_hat))
-                k_fold_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
+                k_fold_df['Accuracy'].append(balanced_accuracy_score(y_val, y_hat))
+                k_fold_df['Kappa'].append(cohen_kappa_score(y_val, y_hat))
+                k_fold_df['F1 Score'].append(f1_score(y_val, y_hat, average='weighted'))
                 k_fold_df['Fitted Models'].append(model)
                 fold += 1
             if binary:
-                best_models.append(k_fold_df['Fitted Models'][np.argmax(k_fold_df['AP'])])
-                fi_ix = k_fold_df['Test IX'][np.argmax(k_fold_df['AP'])]
+                best_model = np.argmax(k_fold_df['AP'])
+                best_models.append(k_fold_df['Fitted Models'][best_model])
+                fi_ix = k_fold_df['Test IX'][best_model]
+                best_model_roc = best_models_roc[best_model]
+                with open(os.path.join('results', str(experiment_name), f"{str(clf)[0:5]}_best_predictions.pkl"),
+                          'wb') as f:
+                    pickle.dump(best_model_roc, f)
             else:
-                best_models.append(k_fold_df['Fitted Models'][np.argmax(k_fold_df['mAP'])])
-                fi_ix = k_fold_df['Test IX'][np.argmax(k_fold_df['mAP'])]
+                best_model = np.argmax(k_fold_df['mAP'])
+                best_models.append(k_fold_df['Fitted Models'][best_model])
+                fi_ix = k_fold_df['Test IX'][best_model]
+                best_model_roc = best_models_roc[best_model]
+                with open(os.path.join('results', str(experiment_name), f"{str(clf)[0:5]}_best_predictions.pkl"),
+                          'wb') as f:
+                    pickle.dump(best_model_roc, f)
             get_classification_table(y, np.argmax(best_models[-1].predict_proba(x), axis=1)).to_csv(
                 os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_class_table.csv'))
             pd.DataFrame(confusion_matrix(y, np.argmax(best_models[-1].predict_proba(x), axis=1))).to_csv(
@@ -418,30 +441,34 @@ no_temp_acc_ds = [True, True, False, False]
 if __name__ == '__main__':
     # Generate datasets
     window_size = 5
-    wesad_r_multi, wesad_r_binary = wesad.respiban_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
-    get_dataset_stats(wesad_r_multi, "WESAD Respiban Dataset Multi")
-    get_dataset_stats(wesad_r_binary, "WESAD Respiban Dataset Binary")
-    wesad_r_noacc_multi, wesad_r_noacc_binary = wesad.respiban_windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
-    get_dataset_stats(wesad_r_noacc_multi, "WESAD Respiban No Acc Multi")
-    get_dataset_stats(wesad_r_noacc_binary, "WESAD Respiban No Acc Binary")
 
     wesad_multi, wesad_binary = wesad.e4_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(wesad_multi, "WESAD Dataset Multi")
     get_dataset_stats(wesad_binary, "WESAD Dataset Binary")
-    wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
+    wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size,
+                                                                                 datastreams=no_temp_acc_ds)
     get_dataset_stats(wesad_noacc_multi, "WESAD No Acc Multi")
     get_dataset_stats(wesad_noacc_binary, "WESAD No Acc Binary")
+
+    wesad_r_multi, wesad_r_binary = wesad.respiban_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
+    get_dataset_stats(wesad_r_multi, "WESAD Respiban Dataset Multi")
+    get_dataset_stats(wesad_r_binary, "WESAD Respiban Dataset Binary")
+    wesad_r_noacc_multi, wesad_r_noacc_binary = wesad.respiban_windowed_feature_extraction(window_size,
+                                                                                           datastreams=no_temp_acc_ds)
+    get_dataset_stats(wesad_r_noacc_multi, "WESAD Respiban No Acc Multi")
+    get_dataset_stats(wesad_r_noacc_binary, "WESAD Respiban No Acc Binary")
 
     clasir_multi, clasir_binary, clasir_ap = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(clasir_multi, "cLASIr Dataset Multi")
     get_dataset_stats(clasir_binary, "cLASIr Dataset Binary")
     get_dataset_stats(clasir_ap, "cLASIr Dataset AP")
-    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
+    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap = clasir.windowed_feature_extraction(window_size,
+                                                                                                  datastreams=no_temp_acc_ds)
     get_dataset_stats(clasir_noacc_binary, "cLASIr No Acc Binary")
     get_dataset_stats(clasir_noacc_multi, "cLASIr No Acc Multi")
     get_dataset_stats(clasir_noacc_ap, "cLASIr No Acc AP")
-    
-    case_multi, case_binary = case.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
+
+    case_multi, case_binary = case.windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
     get_dataset_stats(case_multi, "CASE Dataset Multi")
     get_dataset_stats(case_binary, "CASE Dataset Binary")
 
@@ -642,12 +669,15 @@ if __name__ == '__main__':
 
     binary_eval_df = evaluate_pretrained_models(case_wesad_mix_binary, clasir_respiban_binary,
                                                 "CASE WESAD on Others, Binary", binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(case_wesad_mix_multi, clasir_respiban_multi, "CASE WESAD on Others, Multi",
+    multi_eval_df = evaluate_pretrained_models(case_wesad_mix_multi, clasir_respiban_multi,
+                                               "CASE WESAD on Others, Multi",
                                                multi_eval_df, feature_names_no_acc, binary=False)
 
-    binary_eval_df = evaluate_pretrained_models(clasir_wesad_mix_binary, case_respiban_binary, "cLASIr WESAD on Others, Binary",
+    binary_eval_df = evaluate_pretrained_models(clasir_wesad_mix_binary, case_respiban_binary,
+                                                "cLASIr WESAD on Others, Binary",
                                                 binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(clasir_wesad_mix_multi, case_respiban_multi, "cLASIr WESAD on Others, Multi",
+    multi_eval_df = evaluate_pretrained_models(clasir_wesad_mix_multi, case_respiban_multi,
+                                               "cLASIr WESAD on Others, Multi",
                                                multi_eval_df, feature_names_no_acc, binary=False)
 
     binary_eval_df = evaluate_pretrained_models(clasir_respiban_mix_binary, case_wesad_binary,

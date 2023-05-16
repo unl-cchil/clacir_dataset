@@ -1,12 +1,9 @@
 import numpy as np
 from flirt.eda.feature_calculation import __cvx_eda
-from flirt.hrv.feature_calculation import StatFeatures
-from flirt.hrv.features.fd_features import FdFeatures
-from flirt.hrv.features.nl_features import NonLinearFeatures
-from flirt.hrv.features.td_features import TdFeatures
 from flirt.stats.common import get_stats
-
+from scipy.signal import resample
 import machine_learning_utils as mlu
+import heartpy as hp
 
 
 def run_testing(dataset, labels, window_size=5.0):
@@ -66,7 +63,7 @@ def run_testing(dataset, labels, window_size=5.0):
         print(np.matrix(m_metrics[4]), '\n')
 
 
-def get_e4_features(signal, signal_type):
+def get_e4_features(signal, signal_type, sample_rate=64.0):
     """Processing pipeline per signal, pass in a slice of the signal that corresponds to the window.
     Specify the signal that is passed in.
     Parameters
@@ -78,21 +75,22 @@ def get_e4_features(signal, signal_type):
         List of the features extracted
     """
     features = []
-    if signal_type == 'BVP':
-        features.extend(float(v) for v in TdFeatures().__generate__(signal.reshape(-1)).values())
-        features.extend(float(v) for v in NonLinearFeatures().__generate__(signal.reshape(-1)).values())
-        features.extend(float(v) for v in StatFeatures().__generate__(signal.reshape(-1)).values())
-        features.extend(float(v) for v in FdFeatures().__generate__(signal.reshape(-1)).values())
-    elif signal_type == 'ACC':
-        features.extend(float(v) for v in get_stats(signal[:, 0].reshape(-1)).values())
-        features.extend(float(v) for v in get_stats(signal[:, 1].reshape(-1)).values())
-        features.extend(float(v) for v in get_stats(signal[:, 2].reshape(-1)).values())
-    elif signal_type == 'TEMP':
-        features.extend(float(v) for v in get_stats(signal.reshape(-1)).values())
-    elif signal_type == 'EDA':
-        signal = signal.reshape(-1).ravel()
-        r, t = __cvx_eda(signal, 1/4)
-        features.extend(float(v) for v in get_stats(np.ravel(t)).values())
-        features.extend(float(v) for v in get_stats(np.ravel(r)).values())
-    return features
+    try:
+        if signal_type == 'BVP':
+            signal = signal.reshape(-1)
+            features.extend(float(v) for v in get_stats(signal).values())
+        elif signal_type == 'ACC':
+            features.extend(float(v) for v in get_stats(signal[:, 0].reshape(-1)).values())
+            features.extend(float(v) for v in get_stats(signal[:, 1].reshape(-1)).values())
+            features.extend(float(v) for v in get_stats(signal[:, 2].reshape(-1)).values())
+        elif signal_type == 'TEMP':
+            features.extend(float(v) for v in get_stats(signal.reshape(-1)).values())
+        elif signal_type == 'EDA':
+            signal = signal.reshape(-1).ravel()
+            r, t = __cvx_eda(signal, 1/4)
+            features.extend(float(v) for v in get_stats(np.ravel(t)).values())
+            features.extend(float(v) for v in get_stats(np.ravel(r)).values())
+        return features
+    except Exception:
+        return features
 

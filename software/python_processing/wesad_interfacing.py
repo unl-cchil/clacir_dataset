@@ -5,7 +5,6 @@ import os
 import pickle
 
 import numpy as np
-import scipy.signal as signal
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
 
@@ -123,7 +122,7 @@ def respiban_windowed_feature_extraction(window_size, write_pickle=True, datastr
             dataset = pickle.load(f)
         datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
-        subject_data = load_wesad_dataset(r"D:\Datasets\WESAD/")
+        subject_data = load_wesad_dataset(r"E:\Thesis Results\Datasets\WESAD/")
         # Initialize return lists
         windowed_data = []
         windowed_labels = []
@@ -141,18 +140,22 @@ def respiban_windowed_feature_extraction(window_size, write_pickle=True, datastr
         print("Beginning sample processing...")
         for subject in range(0, len(subject_data)):
             print("Processing subject number:", subject)
-            bvp_generator = sp.split_set(subject_data[subject]['signal']['chest']['ECG'], bvp_window_size, 700.0)
-            eda_generator = sp.split_set(subject_data[subject]['signal']['chest']['EDA'], eda_window_size, 700.0)
-            acc_generator = sp.split_set(subject_data[subject]['signal']['chest']['ACC'], acc_window_size, 700.0)
-            temp_generator = sp.split_set(subject_data[subject]['signal']['chest']['Temp'], temp_window_size, 700.0)
-            label_generator = sp.split_set(subject_data[subject]['label'], label_window_size, 700.0)
+            bvp_generator = sp.split_set(subject_data[subject]['signal']['chest']['ECG'], bvp_window_size, 700.0 / 4)
+            eda_generator = sp.split_set(subject_data[subject]['signal']['chest']['EDA'], eda_window_size, 700.0 / 4)
+            acc_generator = sp.split_set(subject_data[subject]['signal']['chest']['ACC'], acc_window_size, 700.0 / 4)
+            temp_generator = sp.split_set(subject_data[subject]['signal']['chest']['Temp'], temp_window_size, 700.0 / 4)
+            label_generator = sp.split_set(subject_data[subject]['label'], label_window_size, 700.0 / 4)
             for bvp, eda, acc, temp, label in zip(bvp_generator, eda_generator, acc_generator, temp_generator,
                                                   label_generator):
                 if len(bvp) < bvp_window_size or len(eda) < eda_window_size or len(temp) < temp_window_size:
                     continue
                 else:
                     if datastreams[0]:
-                        window_data.extend(get_e4_features(bvp, 'BVP'))
+                        features = get_e4_features(bvp, 'BVP', sample_rate=700.0)
+                        if features:
+                            window_data.extend(features)
+                        else:
+                            continue
                     if datastreams[1]:
                         window_data.extend(get_e4_features(eda, 'EDA'))
                     if datastreams[2]:
@@ -200,7 +203,7 @@ def e4_windowed_feature_extraction(window_size, write_pickle=True, datastreams=N
             dataset = pickle.load(f)
         datasets_array, labels_array = dataset['features'], dataset['labels']
     else:
-        subject_data = load_wesad_dataset(r"D:\Datasets\WESAD/")
+        subject_data = load_wesad_dataset(r"E:\Thesis Results\Datasets\WESAD/")
         # Initialize return lists
         windowed_data = []
         windowed_labels = []
@@ -229,7 +232,11 @@ def e4_windowed_feature_extraction(window_size, write_pickle=True, datastreams=N
                     continue
                 else:
                     if datastreams[0]:
-                        window_data.extend(get_e4_features(bvp, 'BVP'))
+                        features = get_e4_features(bvp, 'BVP')
+                        if features:
+                            window_data.extend(features)
+                        else:
+                            continue
                     if datastreams[1]:
                         window_data.extend(get_e4_features(eda, 'EDA'))
                     if datastreams[2]:
@@ -320,19 +327,3 @@ def load_wesad_dataset(parent_dir):
         raise ValueError("No WESAD datasets found!")
 
     return unpickled_datasets
-
-
-def resample_data(ACC, EDA, labels, new_length):
-    """Resamples the passed signals to the specified length using signal.resample
-    TODO: Should be generalized to use a list of signals
-    Parameters
-    :param ACC:
-    :param EDA:
-    :param labels:
-    :param new_length:
-    :return:
-    """
-    new_ACC = signal.resample(ACC, new_length)
-    new_EDA = signal.resample(EDA, new_length)
-    new_label = np.around(signal.resample(labels, new_length)).clip(min=0, max=7)
-    return new_ACC, new_EDA, new_label
