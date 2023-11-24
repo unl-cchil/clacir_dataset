@@ -1,0 +1,41 @@
+,F1 Score,Accuracy,mAUC,mAP,mAUPRC,Kappa,mTPR@1%FPR,mTPR@5%FPR,mEER,Fitted Models,Test IX
+0,0.20120243306624286,0.21406507313243264,0.33737373066259474,0.3105801390760803,0.2957623691611217,-0.22119079321287138,0.024862486248624863,0.0176017601760176,0.6544154297071859,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[ 54518  54519  54520 ... 116840 116841 116842]
+1,0.25027853298925395,0.23097346570093438,0.39052060520260506,0.3098401453363313,0.32193355329739964,-0.17091390161285647,0.0014296711756296052,0.0,0.5770565250317492,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[     0      1      2 ... 107902 107903 107904]
+2,0.6745029247045341,0.6730140415191785,0.7835666478092648,0.6519987647314457,0.7425978444897549,0.4761057966558341,0.6237613768610492,0.41807716633473335,0.28524310759913435,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[27360 27361 27362 ... 89936 89937 89938]
+3,0.4054038210383899,0.3177845596207664,0.5133803552644876,0.40035682821945917,0.4552743574454691,0.007598661274435647,0.1461921887816266,0.0,0.48338148855461965,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[36412 36413 36414 ... 72367 72368 72369]
+4,0.46170218155794085,0.4072822203243322,0.5823750229548156,0.40037899324025483,0.5004925811614646,0.14420784812933074,0.0,0.0,0.426561252538618,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[72370 72371 72372 ... 98950 98951 98952]
+5,0.3980725007834072,0.32485912716998966,0.550064061027411,0.3783845276078088,0.43019770290535925,0.02823743352212915,0.0015411712901805374,0.0015411712901805374,0.45281401584717335,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[125823 125824 125825 ... 134752 134753 134754]
+6,0.19284864060883836,0.2016036015845757,0.39737696568334685,0.3185011142630411,0.3531211405753609,-0.1228402162502733,0.0179428332985604,0.0,0.5901736401617318,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[18311 18312 18313 ... 27357 27358 27359]
+7,0.6587089427626782,0.5423522248179141,0.6936624826721903,0.5366918063475873,0.6079561673126429,0.44919748085353395,0.25895390537702345,0.227571846729577,0.34849124103885015,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[116843 116844 116845 ... 125820 125821 125822]
+8,0.6525558376879698,0.5387368957785926,0.6722858125998861,0.5282219482996054,0.5915685172186936,0.4378289329046575,0.22983333333333333,0.22983333333333333,0.3717519422976771,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[45488 45489 45490 ... 54515 54516 54517]
+9,0.4451296500539741,0.49733185254683,0.6049590916750268,0.39534976734477495,0.5448614254143553,0.2033654644866275,0.09852593519677373,0.07565011820330969,0.4180435907839617,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x1DD48A81A40))])",[ 9253  9254  9255 ... 18308 18309 18310]

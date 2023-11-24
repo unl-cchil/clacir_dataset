@@ -1,0 +1,13 @@
+,F1 Score,Accuracy,AUC,AP,AUPRC,Kappa,TPR@1%FPR,TPR@5%FPR,EER,Model
+0,0.13823428285576894,0.4999560525409731,0.49985539066398904,0.7142055620217056,0.7120128578937078,-5.048228268078603e-05,0.008675068691064356,0.008675068691064356,0.5000733564527077,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf', LinearDiscriminantAnalysis())])"
+1,0.3347327607709343,0.4833737753796074,0.47793231174906026,0.7045859798053147,0.7278093201998252,-0.02169171688386573,0.0,0.0,0.5167970458177094,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 DecisionTreeClassifier(min_samples_split=20,
+                                        random_state=RandomState(MT19937) at 0x117DE58C240))])"
+2,0.12777963549280552,0.49967768650664296,0.4485552098172964,0.6723855130188727,0.6723709074608976,-0.00036860457844412053,0.048386888714025876,0.017317888056139628,0.5372612235026217,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf',
+                 RandomForestClassifier(min_samples_split=20, n_jobs=-1,
+                                        random_state=RandomState(MT19937) at 0x117DE58C240))])"
+3,0.12703144815361284,0.5,0.5,0.7142258277016911,0.8571129138508455,0.0,0.0,0.0,0.5,"Pipeline(steps=[('scaler', StandardScaler()),
+                ('clf', MLPClassifier(max_iter=1000))])"
