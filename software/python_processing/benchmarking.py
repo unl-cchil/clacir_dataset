@@ -367,7 +367,7 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
                      '2 TPR@1%FPR',
                      '2 TPR@5%FPR',
                      '2 AUPRC',
-                     
+
                      'Kappa',
                      'Fitted Models', 'Test IX'])
             best_models_roc = []
@@ -415,7 +415,7 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
                 k_fold_df['Fitted Models'].append(model)
                 fold += 1
             if binary:
-                best_model = np.argmax(k_fold_df['AP'])
+                best_model = np.argmax(k_fold_df['Kappa'])
                 best_models.append(k_fold_df['Fitted Models'][best_model])
                 fi_ix = k_fold_df['Test IX'][best_model]
                 best_model_roc = best_models_roc[best_model]
@@ -423,7 +423,7 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
                           'wb') as f:
                     pickle.dump(best_model_roc, f)
             else:
-                best_model = np.argmax(k_fold_df['mAP'])
+                best_model = np.argmax(k_fold_df['Kappa'])
                 best_models.append(k_fold_df['Fitted Models'][best_model])
                 fi_ix = k_fold_df['Test IX'][best_model]
                 best_model_roc = best_models_roc[best_model]
@@ -471,6 +471,7 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
         results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
         if binary:
             clf_results.update({
+                f"{clf_name} BAccuracy": f"{np.mean(results_df['BAccuracy']) * 100:.2f} \u00B1 {np.std(results_df['BAccuracy']) * 100:.2f}",
                 f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
                 f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
                 f"{clf_name} AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
@@ -483,15 +484,31 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
             })
         else:
             clf_results.update({
+                f"{clf_name} BAccuracy": f"{np.mean(results_df['BAccuracy']) * 100:.2f} \u00B1 {np.std(results_df['BAccuracy']) * 100:.2f}",
                 f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
                 f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
-                f"{clf_name} mAUC": f"{np.mean(results_df['mAUC']) * 100:.2f} \u00B1 {np.std(results_df['mAUC']) * 100:.2f}",
-                f"{clf_name} mAP": f"{np.mean(results_df['mAP']) * 100:.2f} \u00B1 {np.std(results_df['mAP']) * 100:.2f}",
                 f"{clf_name} Kappa": f"{np.mean(results_df['Kappa']):.2f} \u00B1 {np.std(results_df['Kappa']):.2f}",
-                f"{clf_name} mAUPRC": f"{np.mean(results_df['mAUPRC']) * 100:.2f} \u00B1 {np.std(results_df['mAUPRC']) * 100:.2f}",
-                f"{clf_name} mEER": f"{np.mean(results_df['mEER']) * 100:.2f} \u00B1 {np.std(results_df['mEER']) * 100:.2f}",
-                f"{clf_name} mTPR@10%FPR": f"{np.mean(results_df['mTPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@1%FPR']) * 100:.2f}",
-                f"{clf_name} mTPR@5%FPR": f"{np.mean(results_df['mTPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['mTPR@5%FPR']) * 100:.2f}",
+
+                f"{clf_name} 0 AUC": f"         {np.mean(results_df['0 AUC']) * 100:.2f} \u00B1         {np.std(results_df['0 AUC']) * 100:.2f}",
+                f"{clf_name} 0 AP": f"          {np.mean(results_df['0 AP']) * 100:.2f} \u00B1          {np.std(results_df['0 AP']) * 100:.2f}",
+                f"{clf_name} 0 AUPRC": f"       {np.mean(results_df['0 AUPRC']) * 100:.2f} \u00B1       {np.std(results_df['0 AUPRC']) * 100:.2f}",
+                f"{clf_name} 0 EER": f"         {np.mean(results_df['0 EER']) * 100:.2f} \u00B1         {np.std(results_df['0 EER']) * 100:.2f}",
+                f"{clf_name} 0 TPR@10%FPR": f"  {np.mean(results_df['0 TPR@1%FPR']) * 100:.2f} \u00B1   {np.std(results_df['0 TPR@1%FPR']) * 100:.2f}",
+                f"{clf_name} 0 TPR@5%FPR": f"   {np.mean(results_df['0 TPR@5%FPR']) * 100:.2f} \u00B1   {np.std(results_df['0 TPR@5%FPR']) * 100:.2f}",
+
+                f"{clf_name} 1 AUC": f"         {np.mean(results_df['1 AUC']) * 100:.2f} \u00B1         {np.std(results_df['1 AUC']) * 100:.2f}",
+                f"{clf_name} 1 AP": f"          {np.mean(results_df['1 AP']) * 100:.2f} \u00B1          {np.std(results_df['1 AP']) * 100:.2f}",
+                f"{clf_name} 1 AUPRC": f"       {np.mean(results_df['1 AUPRC']) * 100:.2f} \u00B1       {np.std(results_df['1 AUPRC']) * 100:.2f}",
+                f"{clf_name} 1 EER": f"         {np.mean(results_df['1 EER']) * 100:.2f} \u00B1         {np.std(results_df['1 EER']) * 100:.2f}",
+                f"{clf_name} 1 TPR@10%FPR": f"  {np.mean(results_df['1 TPR@1%FPR']) * 100:.2f} \u00B1   {np.std(results_df['1 TPR@1%FPR']) * 100:.2f}",
+                f"{clf_name} 1 TPR@5%FPR": f"   {np.mean(results_df['1 TPR@5%FPR']) * 100:.2f} \u00B1   {np.std(results_df['1 TPR@5%FPR']) * 100:.2f}",
+
+                f"{clf_name} 2 AUC": f"         {np.mean(results_df['2 AUC']) * 100:.2f} \u00B1         {np.std(results_df['2 AUC']) * 100:.2f}",
+                f"{clf_name} 2 AP": f"          {np.mean(results_df['2 AP']) * 100:.2f} \u00B1          {np.std(results_df['2 AP']) * 100:.2f}",
+                f"{clf_name} 2 AUPRC": f"       {np.mean(results_df['2 AUPRC']) * 100:.2f} \u00B1       {np.std(results_df['2 AUPRC']) * 100:.2f}",
+                f"{clf_name} 2 EER": f"         {np.mean(results_df['2 EER']) * 100:.2f} \u00B1         {np.std(results_df['2 EER']) * 100:.2f}",
+                f"{clf_name} 2 TPR@10%FPR": f"  {np.mean(results_df['2 TPR@1%FPR']) * 100:.2f} \u00B1   {np.std(results_df['2 TPR@1%FPR']) * 100:.2f}",
+                f"{clf_name} 2 TPR@5%FPR": f"   {np.mean(results_df['2 TPR@5%FPR']) * 100:.2f} \u00B1   {np.std(results_df['2 TPR@5%FPR']) * 100:.2f}",
             })
     report_df = report_df.append(clf_results, ignore_index=True)
     return report_df, best_models
@@ -605,9 +622,9 @@ if __name__ == '__main__':
     top_training_features = []
 
     # Perform classic benchmarking with SciKit Learn built in models on each dataset
-    binary_results_df, wesad_r_binary_alone = train_fresh_models(wesad_r_binary, 'WESAD Respiban Binary Task',
-                                                                 binary_results_df, top_training_features,
-                                                                 feature_names)
+    # binary_results_df, wesad_r_binary_alone = train_fresh_models(wesad_r_binary, 'WESAD Respiban Binary Task',
+    #                                                              binary_results_df, top_training_features,
+    #                                                              feature_names)
     multi_results_df, wesad_r_multi_alone = train_fresh_models(wesad_r_multi, 'WESAD Respiban Multiclass Task',
                                                                multi_results_df, top_training_features,
                                                                feature_names, binary=False)
