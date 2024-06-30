@@ -392,3 +392,4 @@ ASALocalRun/
 .mfractor/
 
 *.pkl
+/software/python_processing/results/archive12

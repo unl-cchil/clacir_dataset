@@ -101,6 +101,22 @@ def pose_active_passive(dataset, labels):
     return trimmed_dataset, trimmed_labels
 
 
+def pose_intervention_binary(dataset, labels):
+    # 0 = N/A | 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
+    # Control is considered neutral, precondition is cognitive load/stress, HAI is amusement
+    # Pose the problem of differentiating postcondition with label 0 being control and label 1 is HAI
+    trimmed_dataset, trimmed_labels = [], []
+    for x, y in zip(dataset, labels):
+        del_indxs = np.where(y < 4.0)[0]
+        trimmed_dataset.append(np.delete(x, del_indxs, 0))
+        control = np.where(y == 3)[0]
+        if len(control) > 0:
+            trimmed_labels.append(np.array([[0]] * len(trimmed_dataset[-1])))
+        else:
+            trimmed_labels.append(np.array([[1]] * len(trimmed_dataset[-1])))
+    return trimmed_dataset, trimmed_labels
+
+
 def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None, dataset_name="clasir"):
     if datastreams is None:
         datastreams = [True, True, True, True]
@@ -176,7 +192,7 @@ def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None
                              "labels": labels_array}, f)
 
     remove_nan(datasets_array)
+    ap_dataset, ap_labels = pose_intervention_binary(datasets_array, labels_array)
     datasets_array, labels_array = trim_data(datasets_array, labels_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
-    ap_dataset, ap_labels = pose_active_passive(datasets_array, labels_array)
     return (datasets_array, labels_array), (binary_dataset, binary_labels), (ap_dataset, ap_labels)
