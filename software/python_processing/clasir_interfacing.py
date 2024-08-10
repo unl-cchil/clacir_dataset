@@ -3,7 +3,7 @@ import csv
 import glob
 import os
 import pickle
-
+import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler
@@ -101,13 +101,29 @@ def pose_active_passive(dataset, labels):
     return trimmed_dataset, trimmed_labels
 
 
+def pose_control_v_condition_binary(dataset, labels):
+    # 0 = N/A | 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
+    # Control is considered neutral, precondition is cognitive load/stress, HAI is amusement
+    # Pose the problem of differentiating postcondition with label 0 being control and label 1 is HAI
+    trimmed_dataset, trimmed_labels = [], []
+    for x, y in zip(dataset, labels):
+        sel_indxs = [i for i, n in enumerate(y) if n in [2, 3]]
+        trimmed_dataset.append(x[sel_indxs])
+        control = np.where(y == 3)[0]
+        if len(control) > 0:
+            trimmed_labels.append(np.array([[0]] * len(trimmed_dataset[-1])))
+        else:
+            trimmed_labels.append(np.array([[1]] * len(trimmed_dataset[-1])))
+    return trimmed_dataset, trimmed_labels
+
+
 def pose_intervention_binary(dataset, labels):
     # 0 = N/A | 1 = Precondition | 2 = HAI | 3 = Control | 4 = Postcondition
     # Control is considered neutral, precondition is cognitive load/stress, HAI is amusement
     # Pose the problem of differentiating postcondition with label 0 being control and label 1 is HAI
     trimmed_dataset, trimmed_labels = [], []
     for x, y in zip(dataset, labels):
-        del_indxs = np.where(y < 4.0)[0]
+        del_indxs = [i for i, n in enumerate(y) if n not in [4]]
         trimmed_dataset.append(np.delete(x, del_indxs, 0))
         control = np.where(y == 3)[0]
         if len(control) > 0:
@@ -115,6 +131,52 @@ def pose_intervention_binary(dataset, labels):
         else:
             trimmed_labels.append(np.array([[1]] * len(trimmed_dataset[-1])))
     return trimmed_dataset, trimmed_labels
+
+
+def load_clacir_dataset(filepath):
+    pd.options.mode.chained_assignment = None
+    affect_data = pd.read_csv(os.path.join(filepath, "affect_data.csv"))
+    survey_data = pd.read_csv(os.path.join(filepath, "thayer_stevens_2021_data1.csv"))
+    protocol_times = pd.read_csv(os.path.join(filepath, "hr_data_times.csv"))
+    expt1_subjects = [f for f in os.listdir(os.path.join(filepath, "E4_expt1")) if
+                      not os.path.exists(os.path.join(filepath, "E4_expt1", f, "NA.txt"))]
+    expt2_subjects = [f for f in os.listdir(os.path.join(filepath, "E4_expt2")) if
+                      not os.path.exists(os.path.join(filepath, "E4_expt2", f, "NA.txt"))]
+    expt1_subjects = [int(f) for f in expt1_subjects if f.isnumeric()]
+    expt2_subjects = [int(f) for f in expt2_subjects if f.isnumeric()]
+
+    clacir_subject_data = pd.DataFrame()
+    for subject in expt1_subjects + expt2_subjects:
+        subject_affect = affect_data.loc[affect_data['participant'] == subject]
+        subject_times = protocol_times.loc[protocol_times['participant'] == subject]
+        subject_survey = survey_data.loc[survey_data['participant'] == subject]
+        subject_times = subject_times.drop(['experiment', 'participant', 'condition', 'date'], axis=1)
+        subject_affect = subject_affect.drop(['experiment', 'participant', 'condition'], axis=1)
+
+        if subject_affect.empty or subject_times.empty or subject_survey.empty:
+            continue
+        else:
+            for k, v in zip(subject_times.keys(), subject_times.values[0]):
+                subject_survey[k] = v
+            for k, v in zip(subject_affect.keys(), subject_affect.values[0]):
+                subject_survey[k] = v
+            clacir_subject_data = pd.concat([clacir_subject_data, subject_survey])
+    clacir_subject_data = clacir_subject_data.set_index("experiment")
+    clacir_subject_data.to_excel(os.path.join(filepath, "clacir_data.xlsx"))
+
+
+def generate_dataset(window_size, write_pickle=True, datastreams=None, dataset_name="clacir"):
+    if datastreams is None:
+        datastreams = [True, True, True, True]
+    print("Collecting cLACIr dataset...")
+    dataset_path = f'datasets/clacir_processed/{dataset_name + "_".join([str(int(i)) for i in datastreams])}.pkl'
+    if os.path.exists(dataset_path):
+        print("Pickled cLACIr dataset exists...\n")
+        with open(dataset_path, 'rb') as f:
+            dataset = pickle.load(f)
+        datasets_array, labels_array = dataset['features'], dataset['labels']
+    else:
+        data, labels = load_clacir_dataset('datasets/clacir_raw')
 
 
 def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None, dataset_name="clasir"):
@@ -193,6 +255,7 @@ def windowed_feature_extraction(window_size, write_pickle=True, datastreams=None
 
     remove_nan(datasets_array)
     ap_dataset, ap_labels = pose_intervention_binary(datasets_array, labels_array)
+    int_dataset, int_labels = pose_control_v_condition_binary(datasets_array, labels_array)
     datasets_array, labels_array = trim_data(datasets_array, labels_array)
     binary_dataset, binary_labels = binarize_dataset(datasets_array, labels_array)
-    return (datasets_array, labels_array), (binary_dataset, binary_labels), (ap_dataset, ap_labels)
+    return (datasets_array, labels_array), (binary_dataset, binary_labels), (ap_dataset, ap_labels), (int_dataset, int_labels)

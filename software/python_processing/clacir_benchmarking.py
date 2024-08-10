@@ -524,92 +524,15 @@ if __name__ == '__main__':
     # Generate datasets
     window_size = 5
 
-    wesad_multi, wesad_binary = wesad.e4_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
-    get_dataset_stats(wesad_multi, "WESAD Dataset Multi")
-    get_dataset_stats(wesad_binary, "WESAD Dataset Binary")
-    wesad_noacc_multi, wesad_noacc_binary = wesad.e4_windowed_feature_extraction(window_size,
-                                                                                 datastreams=no_temp_acc_ds)
-    get_dataset_stats(wesad_noacc_multi, "WESAD No Acc Multi")
-    get_dataset_stats(wesad_noacc_binary, "WESAD No Acc Binary")
-
-    wesad_r_multi, wesad_r_binary = wesad.respiban_windowed_feature_extraction(window_size, datastreams=no_temp_ds)
-    get_dataset_stats(wesad_r_multi, "WESAD Respiban Dataset Multi")
-    get_dataset_stats(wesad_r_binary, "WESAD Respiban Dataset Binary")
-    wesad_r_noacc_multi, wesad_r_noacc_binary = wesad.respiban_windowed_feature_extraction(window_size,
-                                                                                           datastreams=no_temp_acc_ds)
-    get_dataset_stats(wesad_r_noacc_multi, "WESAD Respiban No Acc Multi")
-    get_dataset_stats(wesad_r_noacc_binary, "WESAD Respiban No Acc Binary")
-
-    clasir_multi, clasir_binary, clasir_ap = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
+    clasir_multi, clasir_binary, clasir_ap, clasir_int = clasir.windowed_feature_extraction(window_size, datastreams=no_temp_ds)
     get_dataset_stats(clasir_multi, "cLASIr Dataset Multi")
     get_dataset_stats(clasir_binary, "cLASIr Dataset Binary")
     get_dataset_stats(clasir_ap, "cLASIr Dataset AP")
-    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap = clasir.windowed_feature_extraction(window_size,
+    clasir_noacc_multi, clasir_noacc_binary, clasir_noacc_ap, clasir_noacc_int = clasir.windowed_feature_extraction(window_size,
                                                                                                   datastreams=no_temp_acc_ds)
     get_dataset_stats(clasir_noacc_binary, "cLASIr No Acc Binary")
     get_dataset_stats(clasir_noacc_multi, "cLASIr No Acc Multi")
     get_dataset_stats(clasir_noacc_ap, "cLASIr No Acc AP")
-
-    case_multi, case_binary = case.windowed_feature_extraction(window_size, datastreams=no_temp_acc_ds)
-    get_dataset_stats(case_multi, "CASE Dataset Multi")
-    get_dataset_stats(case_binary, "CASE Dataset Binary")
-
-    case_clasir_binary = [clasir_noacc_binary[0] + case_binary[0],
-                          clasir_noacc_binary[1] + case_binary[1]]
-    get_dataset_stats(case_clasir_binary, "CASE cLASIr Dataset Binary")
-    case_clasir_multi = [clasir_noacc_multi[0] + case_multi[0],
-                         clasir_noacc_multi[1] + case_multi[1]]
-    get_dataset_stats(case_clasir_multi, "CASE cLASIr Dataset Multi")
-
-    clasir_wesad_binary = [clasir_noacc_binary[0] + wesad_noacc_binary[0],
-                           clasir_noacc_binary[1] + wesad_noacc_binary[1]]
-    get_dataset_stats(clasir_wesad_binary, "cLASIr WESAD Dataset Binary")
-    clasir_wesad_multi = [clasir_noacc_multi[0] + wesad_noacc_multi[0],
-                          clasir_noacc_multi[1] + wesad_noacc_multi[1]]
-    get_dataset_stats(clasir_wesad_multi, "cLASIr WESAD Dataset Multi")
-
-    case_wesad_binary = [wesad_noacc_binary[0] + case_binary[0],
-                         wesad_noacc_binary[1] + case_binary[1]]
-    get_dataset_stats(case_wesad_binary, "CASE WESAD Dataset Binary")
-    case_wesad_multi = [wesad_noacc_multi[0] + case_multi[0],
-                        wesad_noacc_multi[1] + case_multi[1]]
-    get_dataset_stats(case_wesad_multi, "CASE WESAD Dataset Multi")
-
-    clasir_respiban_binary = [clasir_noacc_binary[0] + wesad_r_noacc_binary[0],
-                              clasir_noacc_binary[1] + wesad_r_noacc_binary[1]]
-    get_dataset_stats(clasir_respiban_binary, "cLASIr Respiban Dataset Binary")
-    clasir_respiban_multi = [clasir_noacc_multi[0] + wesad_r_noacc_multi[0],
-                             clasir_noacc_multi[1] + wesad_r_noacc_multi[1]]
-    get_dataset_stats(clasir_respiban_multi, "cLASIr Respiban Dataset Multi")
-
-    case_respiban_binary = [wesad_r_noacc_binary[0] + case_binary[0],
-                            wesad_r_noacc_binary[1] + case_binary[1]]
-    get_dataset_stats(case_respiban_binary, "CASE Respiban Dataset Binary")
-    case_respiban_multi = [wesad_r_noacc_multi[0] + case_multi[0],
-                           wesad_r_noacc_multi[1] + case_multi[1]]
-    get_dataset_stats(case_respiban_multi, "CASE Respiban Dataset Multi")
-
-    case_clasir_wesad_binary = [
-        clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0],
-        clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1]
-    ]
-    get_dataset_stats(case_clasir_wesad_binary, "CASE cLASIr WESAD Dataset Binary")
-    case_clasir_wesad_multi = [
-        clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0],
-        clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1]
-    ]
-    get_dataset_stats(case_clasir_wesad_multi, "CASE cLASIr WESAD Dataset Multi")
-
-    full_dataset_binary = [
-        clasir_noacc_binary[0] + case_binary[0] + wesad_noacc_binary[0] + wesad_r_noacc_binary[0],
-        clasir_noacc_binary[1] + case_binary[1] + wesad_noacc_binary[1] + wesad_r_noacc_binary[1]
-    ]
-    get_dataset_stats(full_dataset_binary, "Full Dataset Binary")
-    full_dataset_multi = [
-        clasir_noacc_multi[0] + case_multi[0] + wesad_noacc_multi[0] + wesad_r_noacc_multi[0],
-        clasir_noacc_multi[1] + case_multi[1] + wesad_noacc_multi[1] + wesad_r_noacc_multi[1]
-    ]
-    get_dataset_stats(full_dataset_multi, "Full Dataset Multi")
 
     # Collect data into DataFrame
     multi_results_df = pd.DataFrame()
@@ -622,216 +545,22 @@ if __name__ == '__main__':
     top_training_features = []
 
     # Perform classic benchmarking with SciKit Learn built in models on each dataset
-    binary_results_df, wesad_r_binary_alone = train_fresh_models(wesad_r_binary, 'WESAD Respiban Binary Task',
-                                                                 binary_results_df, top_training_features,
-                                                                 feature_names)
-    multi_results_df, wesad_r_multi_alone = train_fresh_models(wesad_r_multi, 'WESAD Respiban Multiclass Task',
-                                                               multi_results_df, top_training_features,
-                                                               feature_names, binary=False)
-
-    binary_results_df, wesad_binary_alone = train_fresh_models(wesad_binary, 'WESAD Binary Task', binary_results_df,
-                                                               top_training_features,
-                                                               feature_names)
-    multi_results_df, wesad_multi_alone = train_fresh_models(wesad_multi, 'WESAD Multiclass Task', multi_results_df,
-                                                             top_training_features,
-                                                             feature_names, binary=False)
-
-    binary_results_df, clasir_binary_alone = train_fresh_models(clasir_binary, 'cLASIr Binary Task', binary_results_df,
-                                                                top_training_features,
-                                                                feature_names)
-    multi_results_df, clasir_multi_alone = train_fresh_models(clasir_multi, 'cLASIr Multiclass Task', multi_results_df,
-                                                              top_training_features,
-                                                              feature_names, binary=False)
-
     binary_results_df, _ = train_fresh_models(clasir_ap, 'cLASIr AvP Task', binary_results_df, top_training_features,
+                                              feature_names)
+    binary_results_df, _ = train_fresh_models(clasir_int, 'cLASIr Int Task', binary_results_df, top_training_features,
                                               feature_names)
 
     # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
-    binary_results_df, wesad_r_noacc_binary_alone = train_fresh_models(wesad_r_noacc_binary,
-                                                                       'WESAD Respiban Binary Task, No Accelerometer',
-                                                                       binary_results_df, top_training_features,
-                                                                       feature_names_no_acc)
-    multi_results_df, wesad_r_noacc_multi_alone = train_fresh_models(wesad_r_noacc_multi,
-                                                                     'WESAD Respiban Multiclass Task, No Accelerometer',
-                                                                     multi_results_df, top_training_features,
-                                                                     feature_names_no_acc,
-                                                                     binary=False)
-
-    binary_results_df, wesad_noacc_binary_alone = train_fresh_models(wesad_noacc_binary,
-                                                                     'WESAD Binary Task, No Accelerometer',
-                                                                     binary_results_df, top_training_features,
-                                                                     feature_names_no_acc)
-    multi_results_df, wesad_noacc_multi_alone = train_fresh_models(wesad_noacc_multi,
-                                                                   'WESAD Multiclass Task, No Accelerometer',
-                                                                   multi_results_df, top_training_features,
-                                                                   feature_names_no_acc, binary=False)
-
-    binary_results_df, clasir_noacc_binary_alone = train_fresh_models(clasir_noacc_binary,
-                                                                      'cLASIr Binary Task, No Accelerometer',
-                                                                      binary_results_df, top_training_features,
-                                                                      feature_names_no_acc)
-    multi_results_df, clasir_noacc_multi_alone = train_fresh_models(clasir_noacc_multi,
-                                                                    'cLASIr Multiclass Task, No Accelerometer',
-                                                                    multi_results_df, top_training_features,
-                                                                    feature_names_no_acc,
-                                                                    binary=False)
-
     binary_results_df, _ = train_fresh_models(clasir_noacc_ap, 'cLASIr AvP Task, No Accelerometer', binary_results_df,
                                               top_training_features,
                                               feature_names_no_acc)
-
-    binary_results_df, case_binary_alone = train_fresh_models(case_binary, 'CASE Binary Task', binary_results_df,
-                                                              top_training_features,
-                                                              feature_names_no_acc)
-    multi_results_df, case_multi_alone = train_fresh_models(case_multi, 'CASE Multiclass Task', multi_results_df,
-                                                            top_training_features,
-                                                            feature_names_no_acc, binary=False)
-
-    # Observe domain shift by using best model for each dataset on the other datasets
-    multi_eval_df = evaluate_pretrained_models(wesad_r_multi_alone, clasir_multi, "Respiban on cLASIr, Multi",
-                                               top_features, multi_eval_df, feature_names, binary=False)
-    binary_eval_df = evaluate_pretrained_models(wesad_r_binary_alone, clasir_binary, "Respiban on cLASIr, Binary",
-                                                top_features, binary_eval_df, feature_names)
-
-    multi_eval_df = evaluate_pretrained_models(wesad_multi_alone, clasir_multi, "WESAD on cLASIr, Multi",
-                                               top_features, multi_eval_df, feature_names, binary=False)
-    binary_eval_df = evaluate_pretrained_models(wesad_binary_alone, clasir_binary, "WESAD on cLASIr, Binary",
-                                                top_features, binary_eval_df, feature_names)
-
-    multi_eval_df = evaluate_pretrained_models(clasir_multi_alone, wesad_multi, "cLASIr on WESAD, Multi",
-                                               top_features, multi_eval_df, feature_names, binary=False)
-    binary_eval_df = evaluate_pretrained_models(clasir_binary_alone, wesad_binary, "cLASIr on WESAD, Binary",
-                                                top_features, binary_eval_df, feature_names)
-
-    binary_eval_df = evaluate_pretrained_models(wesad_noacc_binary_alone, case_clasir_binary, "WESAD on Others, Binary",
-                                                top_features, binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(wesad_noacc_multi_alone, case_clasir_multi, "WESAD on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(clasir_noacc_binary_alone, case_wesad_binary,
-                                                "cLASIr on Others, Binary", top_features, binary_eval_df,
-                                                feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(clasir_noacc_multi_alone, case_wesad_multi, "cLASIr on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(case_binary_alone, clasir_wesad_binary, "CASE on Others, Binary",
-                                                top_features, binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(case_multi_alone, clasir_wesad_multi, "CASE on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    # Perform domain adaptation using dataset mixing, benchmark in the same way
-    binary_results_df, case_clasir_mix_binary = train_fresh_models(case_clasir_binary, "CASE cLASIr Transfer, Binary",
-                                                                   binary_results_df, top_training_features,
-                                                                   feature_names_no_acc)
-    multi_results_df, case_clasir_mix_multi = train_fresh_models(case_clasir_multi, "CASE cLASIr Transfer, Multi",
-                                                                 multi_results_df, top_training_features,
-                                                                 feature_names_no_acc, binary=False)
-
-    binary_results_df, case_wesad_mix_binary = train_fresh_models(case_wesad_binary, "CASE WESAD Transfer, Binary",
-                                                                  binary_results_df, top_training_features,
-                                                                  feature_names_no_acc)
-    multi_results_df, case_wesad_mix_multi = train_fresh_models(case_wesad_multi, "CASE WESAD Transfer, Multi",
-                                                                multi_results_df, top_training_features,
-                                                                feature_names_no_acc, binary=False)
-
-    binary_results_df, case_respiban_mix_binary = train_fresh_models(case_respiban_binary,
-                                                                     "CASE Respiban Transfer, Binary",
-                                                                     binary_results_df, top_training_features,
-                                                                     feature_names_no_acc)
-    multi_results_df, case_respiban_mix_multi = train_fresh_models(case_respiban_multi, "CASE Respiban Transfer, Multi",
-                                                                   multi_results_df, top_training_features,
-                                                                   feature_names_no_acc, binary=False)
-
-    binary_results_df, clasir_wesad_mix_binary = train_fresh_models(clasir_wesad_binary,
-                                                                    "cLASIr WESAD Transfer, Binary", binary_results_df,
-                                                                    top_training_features,
-                                                                    feature_names_no_acc)
-    multi_results_df, clasir_wesad_mix_multi = train_fresh_models(clasir_wesad_multi, "cLASIr WESAD Transfer, Multi",
-                                                                  multi_results_df, top_training_features,
-                                                                  feature_names_no_acc, binary=False)
-
-    binary_results_df, clasir_respiban_mix_binary = train_fresh_models(clasir_respiban_binary,
-                                                                       "cLASIr Respiban Transfer, Binary",
-                                                                       binary_results_df, top_training_features,
-                                                                       feature_names_no_acc)
-    multi_results_df, clasir_respiban_mix_multi = train_fresh_models(clasir_respiban_multi,
-                                                                     "cLASIr Respiban Transfer, Multi",
-                                                                     multi_results_df, top_training_features,
-                                                                     feature_names_no_acc,
-                                                                     binary=False)
-
-    binary_results_df, case_clasir_wesad_mix_binary = train_fresh_models(case_clasir_wesad_binary,
-                                                                         "CASE cLASIr WESAD Transfer, Binary",
-                                                                         binary_results_df, top_training_features,
-                                                                         feature_names_no_acc)
-    multi_results_df, case_clasir_wesad_mix_multi = train_fresh_models(case_clasir_wesad_multi,
-                                                                       "CASE cLASIr WESAD Transfer, Multi",
-                                                                       multi_results_df, top_training_features,
-                                                                       feature_names_no_acc,
-                                                                       binary=False)
-
-    # Evaluate improved domain shift
-    binary_eval_df = evaluate_pretrained_models(case_clasir_mix_binary, wesad_noacc_binary,
-                                                "CASE cLASIr on Others, Binary", top_features, binary_eval_df,
-                                                feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(case_clasir_mix_multi, wesad_noacc_multi, "CASE cLASIr on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(case_wesad_mix_binary, clasir_respiban_binary,
-                                                "CASE WESAD on Others, Binary", top_features, binary_eval_df,
-                                                feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(case_wesad_mix_multi, clasir_respiban_multi,
-                                               "CASE WESAD on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(clasir_wesad_mix_binary, case_respiban_binary,
-                                                "cLASIr WESAD on Others, Binary",
-                                                top_features, binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(clasir_wesad_mix_multi, case_respiban_multi,
-                                               "cLASIr WESAD on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(clasir_respiban_mix_binary, case_wesad_binary,
-                                                "cLASIr Respiban on Others, Binary",
-                                                top_features, binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(clasir_respiban_mix_multi, case_wesad_multi,
-                                               "cLASIr Respiban on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(case_respiban_mix_binary, clasir_wesad_binary,
-                                                "CASE Respiban on Others, Binary",
-                                                top_features, binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(case_respiban_mix_multi, clasir_wesad_multi,
-                                               "CASE Respiban on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    binary_eval_df = evaluate_pretrained_models(case_clasir_wesad_mix_binary, wesad_r_noacc_binary,
-                                                "CASE cLASIr WESAD on Others, Binary",
-                                                top_features, binary_eval_df, feature_names_no_acc)
-    multi_eval_df = evaluate_pretrained_models(case_clasir_wesad_mix_multi, wesad_r_noacc_multi,
-                                               "CASE cLASIr WESAD on Others, Multi",
-                                               top_features, multi_eval_df, feature_names_no_acc, binary=False)
-
-    # Evaluate using all data, 34 classification tasks total
-    binary_results_df, full_mix_binary = train_fresh_models(full_dataset_binary, "Full Dataset, Binary",
-                                                            binary_results_df, top_training_features,
-                                                            feature_names_no_acc)
-    multi_results_df, full_mix_multi = train_fresh_models(full_dataset_multi, "Full Dataset, Multi", multi_results_df,
-                                                          top_training_features,
-                                                          feature_names_no_acc, binary=False)
+    binary_results_df, _ = train_fresh_models(clasir_noacc_int, 'cLASIr Int Task, No Accelerometer', binary_results_df,
+                                              top_training_features,
+                                              feature_names_no_acc)
 
     # Prepare and save results
-    multi_results_df.set_index('Experiment', inplace=True)
-    multi_results_df.to_excel(os.path.join('results', 'Multiclass Training Results.xlsx'))
-
     binary_results_df.set_index('Experiment', inplace=True)
     binary_results_df.to_excel(os.path.join('results', 'Binary Training Results.xlsx'))
-
-    multi_eval_df.set_index('Experiment', inplace=True)
-    multi_eval_df.to_excel(os.path.join('results', 'Multiclass Evaluation Results.xlsx'))
-
-    binary_eval_df.set_index('Experiment', inplace=True)
-    binary_eval_df.to_excel(os.path.join('results', 'Binary Evaluation Results.xlsx'))
 
     pd.DataFrame(top_features).to_excel(os.path.join('results', 'Top Evaluation Features.xlsx'))
     pd.DataFrame(top_training_features).to_excel(os.path.join('results', 'Top Training Features.xlsx'))
@@ -841,4 +570,4 @@ if __name__ == '__main__':
     minutes = seconds / 60.0
     hours = minutes / 60.0
     days = hours / 24.0
-    print(f"\n\nThis process completed in {int(days)}:{int(hours)}:{int(minutes)}:{int(seconds)}")
+    print(f"\n\nThis process completed in {int(days)}:{int(hours) % 24}:{int(minutes) % 60}:{int(seconds) % 60}")
