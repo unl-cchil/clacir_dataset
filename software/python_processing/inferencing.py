@@ -77,16 +77,14 @@ def get_e4_features(signal, signal_type, sample_rate=64.0):
     features = []
     try:
         if signal_type == 'BVP':
-            signal = signal.reshape(-1)
             features.extend(float(v) for v in get_stats(signal).values())
         elif signal_type == 'ACC':
-            features.extend(float(v) for v in get_stats(signal[:, 0].reshape(-1)).values())
-            features.extend(float(v) for v in get_stats(signal[:, 1].reshape(-1)).values())
-            features.extend(float(v) for v in get_stats(signal[:, 2].reshape(-1)).values())
-        elif signal_type == 'TEMP':
-            features.extend(float(v) for v in get_stats(signal.reshape(-1)).values())
+            features.extend(float(v) for v in get_stats(signal).values())
+        elif signal_type == 'TMP':
+            features.extend(float(v) for v in get_stats(signal).values())
+        elif signal_type == 'HRV':
+            features.extend(float(v) for v in get_stats(signal).values())
         elif signal_type == 'EDA':
-            signal = signal.reshape(-1).ravel()
             r, t = __cvx_eda(signal, 1/4)
             features.extend(float(v) for v in get_stats(np.ravel(t)).values())
             features.extend(float(v) for v in get_stats(np.ravel(r)).values())
