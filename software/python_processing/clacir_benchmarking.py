@@ -32,6 +32,10 @@ import warnings
 
 from scipy.interpolate import interp1d
 from scipy.optimize import brentq
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -49,6 +53,7 @@ from sklearn.preprocessing import label_binarize, StandardScaler
 from eli5.sklearn import PermutationImportance
 from sklearn.utils import shuffle
 import clasir_interfacing as clasir
+import matplotlib.pyplot as plt
 
 bvp_feature_names = [
     'bvp_mean', 'bvp_std', 'bvp_min', 'bvp_max', 'bvp_ptp', 'bvp_sum', 'bvp_energy',
@@ -175,7 +180,7 @@ def calculate_eer(y_true, y_score):
 
 
 def stratifiedgroupkfold_test():
-    clasir_multi, clasir_binary = clasir.windowed_feature_extraction(window_size)
+    clasir_multi, clasir_binary = clasir.windowed_feature_extraction(5)
     groups = []
     datasets = clasir_binary
     for i in range(0, len(datasets[0])):
@@ -315,23 +320,29 @@ def evaluate_pretrained_models(clfs, datasets, experiment_name, mda_features, re
     return report_df.append(clf_results, ignore_index=True)
 
 
-def train_fresh_models(datasets, experiment_name, report_df, mda_features, features=None, binary=True, folds=10):
+def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name, report_df, mda_features, features=None,
+                       binary=True, folds=10):
+    rng = np.random.RandomState(0)
     if features is None:
         classifiers = [
             LinearDiscriminantAnalysis(solver='lsqr'),
-            # KNeighborsClassifier(9, n_jobs=-1),
-            # DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-            # RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
+            KNeighborsClassifier(9, n_jobs=-1),
+            DecisionTreeClassifier(min_samples_split=20, random_state=rng),
+            RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
             # MLPClassifier(max_iter=1000)
         ]
     else:
         classifiers = [
             LinearDiscriminantAnalysis(solver='lsqr'),
-            # DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-            # RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
+            DecisionTreeClassifier(min_samples_split=20, random_state=rng),
+            RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
             # MLPClassifier(max_iter=1000)
         ]
     if not os.path.exists(os.path.join('results', str(experiment_name))):
+        datasets = clasir.generate_dataset(datastreams=datastreams,
+                                           panas_threshold=panas_threshold)[experiment]
+        get_dataset_stats(datasets, experiment_name)
+
         os.mkdir(os.path.join('results', str(experiment_name)))
         groups = []
         for i in range(0, len(datasets[0])):
@@ -351,7 +362,11 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
             # k_fold = StratifiedKFold(n_splits=folds, shuffle=True, random_state=rng)
             if binary:
                 k_fold_df = dict((sub, []) for sub in
-                                 ['F1 Score', 'BAccuracy', 'Accuracy', 'Class', 'Baseline',
+                                 ['F1 Score', 'BAccuracy', 'Accuracy', 'Class',
+                                  'Test Baseline Class 0', 'Test Baseline Class 1',
+                                  'Train Baseline Class 0', 'Train Baseline Class 1',
+                                  'Train Identities Class 0', 'Train Identities Class 1',
+                                  'Test Identities Class 0', 'Test Identities Class 1',
                                   'AUC',
                                   'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR',
                                   'TPR@5%FPR',
@@ -399,22 +414,28 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
 
                 train_x, x_test = x[train_ix], x[test_ix]
                 train_y, y_test = y[train_ix], y[test_ix]
+                train_group, test_group = groups[train_ix], groups[test_ix]
+
                 model = pipeline.fit(train_x, train_y)
                 y_hat_probs = model.predict_proba(x_test)
                 y_hat = np.argmax(y_hat_probs, axis=1)
                 best_models_roc.append((y_hat_probs, y_test))
                 y_val = y_test
-                # print("Prediction results")
-                # print(accuracy_score(y_val, y_hat))
-                # print(balanced_accuracy_score(y_val, y_hat))
-                # print(np.unique(groups[test_ix]))
                 k_fold_df['BAccuracy'].append(balanced_accuracy_score(y_val, y_hat))
                 k_fold_df['Accuracy'].append(accuracy_score(y_val, y_hat))
                 k_fold_df['Kappa'].append(cohen_kappa_score(y_val, y_hat))
                 k_fold_df['F1 Score'].append(f1_score(y_val, y_hat, average='weighted'))
                 k_fold_df['Test IX'].append(np.unique(groups[test_ix]))
                 k_fold_df['Class'].append(np.unique(y_val))
-                k_fold_df['Baseline'].append(len(np.where(x_test == 1)[0]) / len(x_test))
+
+                k_fold_df['Train Baseline Class 1'].append(len(np.where(train_y == 1)[0]) / len(train_y))
+                k_fold_df['Train Baseline Class 0'].append(len(np.where(train_y == 0)[0]) / len(train_y))
+                k_fold_df['Test Baseline Class 1'].append(len(np.where(y_test == 1)[0]) / len(y_test))
+                k_fold_df['Test Baseline Class 0'].append(len(np.where(y_test == 0)[0]) / len(y_test))
+                k_fold_df['Train Identities Class 1'].append(len(np.unique(train_group[np.where(train_y == 1)])))
+                k_fold_df['Train Identities Class 0'].append(len(np.unique(train_group[np.where(train_y == 0)])))
+                k_fold_df['Test Identities Class 1'].append(len(np.unique(test_group[np.where(y_test == 1)])))
+                k_fold_df['Test Identities Class 0'].append(len(np.unique(test_group[np.where(y_test == 0)])))
 
                 if binary:
                     k_fold_df['AP'].append(average_precision_score(y_val, y_hat_probs[:, 1], average='weighted'))
@@ -475,6 +496,8 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
                     os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_fi_explain.csv'))
         with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'wb') as f:
             pickle.dump(best_models, f)
+    else:
+        print(f"Experiment with name {experiment_name} already exists, loading data...")
     with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'rb') as f:
         best_models = pickle.load(f)
     clf_results = {f"Experiment": experiment_name}
@@ -504,17 +527,26 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
         results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
         if binary:
             clf_results.update({
-                f"{clf_name} BAccuracy": f"{np.mean(results_df['BAccuracy']) * 100:.2f} \u00B1 {np.std(results_df['BAccuracy']) * 100:.2f}",
-                f"{clf_name} Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
-                f"{clf_name} F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
-                f"{clf_name} AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
-                f"{clf_name} AP": f"{np.mean(results_df['AP']) * 100:.2f} \u00B1 {np.std(results_df['AP']) * 100:.2f}",
-                f"{clf_name} Kappa": f"{np.mean(results_df['Kappa']):.2f} \u00B1 {np.std(results_df['Kappa']):.2f}",
-                f"{clf_name} AUPRC": f"{np.mean(results_df['AUPRC']) * 100:.2f} \u00B1 {np.std(results_df['AUPRC']) * 100:.2f}",
-                f"{clf_name} EER": f"{np.mean(results_df['EER']) * 100:.2f} \u00B1 {np.std(results_df['EER']) * 100:.2f}",
-                f"{clf_name} TPR@10%FPR": f"{np.mean(results_df['TPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@1%FPR']) * 100:.2f}",
-                f"{clf_name} TPR@5%FPR": f"{np.mean(results_df['TPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@5%FPR']) * 100:.2f}",
-                f"{clf_name} Baseline Accuracy": f"{np.mean(results_df['Baseline']) * 100:.2f}  \u00B1 {np.std(results_df['Baseline']) * 100:.2f}",
+                f"Classifier": clf_name,
+                f"PANAS Threshold": panas,
+                f"Balanced Accuracy": f"{np.mean(results_df['BAccuracy']) * 100:.2f} \u00B1 {np.std(results_df['BAccuracy']) * 100:.2f}",
+                f"Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
+                f"F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
+                f"AUC": f"{np.mean(results_df['AUC']) * 100:.2f} \u00B1 {np.std(results_df['AUC']) * 100:.2f}",
+                f"AP": f"{np.mean(results_df['AP']) * 100:.2f} \u00B1 {np.std(results_df['AP']) * 100:.2f}",
+                f"Kappa": f"{np.mean(results_df['Kappa']) * 100:.2f} \u00B1 {np.std(results_df['Kappa']) * 100:.2f}",
+                f"AUPRC": f"{np.mean(results_df['AUPRC']) * 100:.2f} \u00B1 {np.std(results_df['AUPRC']) * 100:.2f}",
+                f"EER": f"{np.mean(results_df['EER']) * 100:.2f} \u00B1 {np.std(results_df['EER']) * 100:.2f}",
+                f"TPR@10%FPR": f"{np.mean(results_df['TPR@1%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@1%FPR']) * 100:.2f}",
+                f"TPR@5%FPR": f"{np.mean(results_df['TPR@5%FPR']) * 100:.2f} \u00B1 {np.std(results_df['TPR@5%FPR']) * 100:.2f}",
+                f"Test Baseline Class 1": f"{np.mean(results_df['Test Baseline Class 1']) * 100:.2f} \u00B1 {np.std(results_df['Test Baseline Class 1']):.2f}",
+                f"Test Baseline Class 0": f"{np.mean(results_df['Test Baseline Class 0']) * 100:.2f} \u00B1 {np.std(results_df['Test Baseline Class 0']):.2f}",
+                f"Train Baseline Class 1": f"{np.mean(results_df['Train Baseline Class 1']) * 100:.2f} \u00B1 {np.std(results_df['Train Baseline Class 1']):.2f}",
+                f"Train Baseline Class 0": f"{np.mean(results_df['Train Baseline Class 0']) * 100:.2f} \u00B1 {np.std(results_df['Train Baseline Class 0']):.2f}",
+                f"Train Identities Class 1": f"{np.mean(results_df['Train Identities Class 1']):.2f} \u00B1 {np.std(results_df['Train Identities Class 1']):.2f}",
+                f"Train Identities Class 0": f"{np.mean(results_df['Train Identities Class 0']):.2f} \u00B1 {np.std(results_df['Train Identities Class 0']):.2f}",
+                f"Test Identities Class 1": f"{np.mean(results_df['Test Identities Class 1']):.2f} \u00B1 {np.std(results_df['Test Identities Class 1']):.2f}",
+                f"Test Identities Class 0": f"{np.mean(results_df['Test Identities Class 0']):.2f} \u00B1 {np.std(results_df['Test Identities Class 0']):.2f}",
             })
         else:
             clf_results.update({
@@ -544,73 +576,219 @@ def train_fresh_models(datasets, experiment_name, report_df, mda_features, featu
                 f"{clf_name} 2 TPR@10%FPR": f"  {np.mean(results_df['2 TPR@1%FPR']) * 100:.2f} \u00B1   {np.std(results_df['2 TPR@1%FPR']) * 100:.2f}",
                 f"{clf_name} 2 TPR@5%FPR": f"   {np.mean(results_df['2 TPR@5%FPR']) * 100:.2f} \u00B1   {np.std(results_df['2 TPR@5%FPR']) * 100:.2f}",
             })
-    report_df = report_df.append(clf_results, ignore_index=True)
+        report_df = report_df.append(clf_results, ignore_index=True)
     return report_df, best_models
 
 
-no_temp_ds = [False, True, True, False, True]
-no_temp_acc_ds = [False, True, False, False, True]
+def generate_figures(exp_df, plot_savepath, plot_name):
+    metric_plot, metric_ax = plt.subplots(2, 2)
+    setup_figure = False
+    clfs = ['DTC', 'KNC', 'LDA', 'RFC']
+    colors = ['red', 'green', 'orange', 'blue']
+    markers = ['x', 'o', '^', '<']
+    for clf, color, marker in zip(clfs, colors, markers):
+        dtc_df = exp_df.loc[exp_df['Classifier'] == clf]
+        ba_avg = dtc_df['Balanced Accuracy'].apply(lambda x: float(x.split(' ')[0]))
+        ba_std = dtc_df['Balanced Accuracy'].apply(lambda x: float(x.split(' ')[2]))
+
+        ka_avg = dtc_df['Kappa'].apply(lambda x: float(x.split(' ')[0]))
+        ka_std = dtc_df['Kappa'].apply(lambda x: float(x.split(' ')[2]))
+
+        au_avg = dtc_df['AUPRC'].apply(lambda x: float(x.split(' ')[0]))
+        au_std = dtc_df['AUPRC'].apply(lambda x: float(x.split(' ')[2]))
+
+        tp_avg = dtc_df['TPR@10%FPR'].apply(lambda x: float(x.split(' ')[0]))
+        tp_std = dtc_df['TPR@10%FPR'].apply(lambda x: float(x.split(' ')[2]))
+
+        ba_baseline = dtc_df['Test Baseline Class 0'].apply(lambda x: float(x.split(' ')[0]))
+
+        if not setup_figure:
+            metric_ax[0, 0].plot(dtc_df['PANAS Threshold'], ba_baseline, label="Baseline", color='black')
+            metric_ax[0, 0].set_xlabel('PANAS Threshold')
+            metric_ax[0, 0].set_ylabel('Balanced Accuracy')
+
+            metric_ax[0, 1].set_xlabel('PANAS Threshold')
+            metric_ax[0, 1].set_ylabel('Kappa')
+
+            metric_ax[1, 0].set_xlabel('PANAS Threshold')
+            metric_ax[1, 0].set_ylabel('AUPRC')
+
+            metric_ax[1, 1].set_xlabel('PANAS Threshold')
+            metric_ax[1, 1].set_ylabel('TPR @ 10% FPR')
+            setup_figure = True
+        metric_ax[0, 0].errorbar(dtc_df['PANAS Threshold'], ba_avg, yerr=ba_std, label=clf, color=color, marker=marker, capsize=3)
+        metric_ax[0, 1].errorbar(dtc_df['PANAS Threshold'], ka_avg, yerr=ka_std, label=clf, color=color, marker=marker, capsize=3)
+        metric_ax[1, 0].errorbar(dtc_df['PANAS Threshold'], au_avg, yerr=au_std, label=clf, color=color, marker=marker, capsize=3)
+        metric_ax[1, 1].errorbar(dtc_df['PANAS Threshold'], tp_avg, yerr=tp_std, label=clf, color=color, marker=marker, capsize=3)
+    metric_plot.suptitle(plot_name)
+    metric_ax[0, 0].legend()
+    metric_ax[0, 1].legend()
+    metric_ax[1, 0].legend()
+    metric_ax[1, 1].legend()
+    metric_plot.set_size_inches(10, 10)
+    metric_plot.tight_layout()
+    metric_plot.savefig(plot_savepath, dpi=500)
+
+
+bvp_only = [True, False, False, False, False]
+eda_only = [False, True, False, False, False]
+acc_only = [False, False, True, False, False]
+hrv_only = [False, False, False, False, True]
+
+all_data = [True, True, True, False, True]
+all_data_remove_acc = [True, True, False, False, True]
+
 if __name__ == '__main__':
     # Record start time
     start = time.time()
     # Fix the random seed
     random.seed(42)
     # Generate datasets
-    window_size = 5
     folds = 10
 
     # Collect data into DataFrame
-    int_train = pd.DataFrame()
-    int_train_noacc = pd.DataFrame()
-    ap_train = pd.DataFrame()
-    ap_train_noacc = pd.DataFrame()
+    int_train_all_data = pd.DataFrame()
+    int_train_remove_acc = pd.DataFrame()
+    int_train_eda = pd.DataFrame()
+    int_train_hrv = pd.DataFrame()
+    int_train_acc = pd.DataFrame()
+    int_train_bvp = pd.DataFrame()
+
+    ap_train_all_data = pd.DataFrame()
+    ap_train_remove_acc = pd.DataFrame()
+    ap_train_eda = pd.DataFrame()
+    ap_train_hrv = pd.DataFrame()
+    ap_train_acc = pd.DataFrame()
+    ap_train_bvp = pd.DataFrame()
 
     top_features = []
     top_training_features = []
 
-    for panas in np.arange(-1, 1, 0.1):
-        clasir_ap, clasir_int = clasir.generate_dataset(datastreams=no_temp_ds, panas_threshold=panas)
-        clasir_noacc_ap, clasir_noacc_int = clasir.generate_dataset(datastreams=no_temp_acc_ds, panas_threshold=panas)
-
-        get_dataset_stats(clasir_ap, f"cLACIr Dataset AP {panas:.1f}")
-        get_dataset_stats(clasir_int, f"cLACIr Dataset Int {panas:.1f}")
-        get_dataset_stats(clasir_noacc_ap, f"cLACIr No Acc AP {panas:.1f}")
-        get_dataset_stats(clasir_noacc_int, f"cLACIr No Acc Int {panas:.1f}")
-
+    # if os.path.exists(os.path.join('results', 'Int All Data.xlsx')):
+    #     int_train_all_data = pd.read_excel(os.path.join('results', 'Int All Data.xlsx'))
+    #     int_train_remove_acc = pd.read_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
+    #     int_train_eda = pd.read_excel(os.path.join('results', 'Int EDA.xlsx'))
+    #     int_train_hrv = pd.read_excel(os.path.join('results', 'Int HRV.xlsx'))
+    #     int_train_acc = pd.read_excel(os.path.join('results', 'Int ACC.xlsx'))
+    #     int_train_bvp = pd.read_excel(os.path.join('results', 'Int BVP.xlsx'))
+    #     ap_train_all_data = pd.read_excel(os.path.join('results', 'AP All Data.xlsx'))
+    #     ap_train_remove_acc = pd.read_excel(os.path.join('results', 'AP Remove ACC.xlsx'))
+    #     ap_train_eda = pd.read_excel(os.path.join('results', 'AP EDA.xlsx'))
+    #     ap_train_hrv = pd.read_excel(os.path.join('results', 'AP HRV.xlsx'))
+    #     ap_train_acc = pd.read_excel(os.path.join('results', 'AP ACC.xlsx'))
+    #     ap_train_bvp = pd.read_excel(os.path.join('results', 'AP BVP.xlsx'))
+    # else:
+    for panas in np.arange(-1, 1.1, 0.1):
         # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
-        ap_train, _ = train_fresh_models(clasir_ap, f'cLACIr AP Task {panas:.1f}', ap_train,
-                                         top_training_features,
-                                         None, folds=folds)
-        int_train, _ = train_fresh_models(clasir_int, f'cLACIr Int Task {panas:.1f}', int_train,
-                                          top_training_features,
-                                          None, folds=folds)
+        ap_train_all_data, _ = train_fresh_models(all_data, panas, 0, f'AP All Data {panas:.1f}', ap_train_all_data,
+                                                  top_training_features,
+                                                  None, folds=folds)
+        int_train_all_data, _ = train_fresh_models(all_data, panas, 1, f'Int All Data {panas:.1f}',
+                                                   int_train_all_data,
+                                                   top_training_features,
+                                                   None, folds=folds)
 
-        ap_train_noacc, _ = train_fresh_models(clasir_noacc_ap, f'cLACIr AP Task, No Accelerometer {panas:.1f}', ap_train_noacc,
-                                         top_training_features,
-                                         None, folds=folds)
-        int_train_noacc, _ = train_fresh_models(clasir_noacc_int, f'cLACIr Int Task, No Accelerometer {panas:.1f}', int_train_noacc,
-                                          top_training_features,
-                                          None, folds=folds)
+        ap_train_remove_acc, _ = train_fresh_models(all_data_remove_acc, panas, 0,
+                                                    f'AP Task Remove ACC {panas:.1f}',
+                                                    ap_train_remove_acc,
+                                                    top_training_features,
+                                                    None, folds=folds)
+        int_train_remove_acc, _ = train_fresh_models(all_data_remove_acc, panas, 1,
+                                                     f'Int Task Remove ACC {panas:.1f}',
+                                                     int_train_remove_acc,
+                                                     top_training_features,
+                                                     None, folds=folds)
 
-    # Prepare and save results
-    int_train.set_index('Experiment', inplace=True)
-    int_train.to_excel(os.path.join('results', 'Int Training Results.xlsx'))
+        ap_train_eda, _ = train_fresh_models(eda_only, panas, 0,
+                                             f'AP Task EDA {panas:.1f}',
+                                             ap_train_eda,
+                                             top_training_features,
+                                             None, folds=folds)
+        int_train_eda, _ = train_fresh_models(eda_only, panas, 0,
+                                              f'Int Task EDA {panas:.1f}',
+                                              int_train_eda,
+                                              top_training_features,
+                                              None, folds=folds)
 
-    ap_train.set_index('Experiment', inplace=True)
-    ap_train.to_excel(os.path.join('results', 'AP Training Results.xlsx'))
+        ap_train_hrv, _ = train_fresh_models(hrv_only, panas, 0,
+                                             f'AP Task HRV {panas:.1f}',
+                                             ap_train_hrv,
+                                             top_training_features,
+                                             None, folds=folds)
+        int_train_hrv, _ = train_fresh_models(hrv_only, panas, 1,
+                                              f'Int Task HRV {panas:.1f}',
+                                              int_train_hrv,
+                                              top_training_features,
+                                              None, folds=folds)
 
-    int_train_noacc.set_index('Experiment', inplace=True)
-    int_train_noacc.to_excel(os.path.join('results', 'Int Noacc Training Results.xlsx'))
+        ap_train_acc, _ = train_fresh_models(acc_only, panas, 0,
+                                             f'AP Task ACC {panas:.1f}',
+                                             ap_train_acc,
+                                             top_training_features,
+                                             None, folds=folds)
+        int_train_acc, _ = train_fresh_models(acc_only, panas, 1,
+                                              f'Int Task ACC {panas:.1f}',
+                                              int_train_acc,
+                                              top_training_features,
+                                              None, folds=folds)
 
-    ap_train_noacc.set_index('Experiment', inplace=True)
-    ap_train_noacc.to_excel(os.path.join('results', 'AP Noacc Training Results.xlsx'))
+        ap_train_bvp, _ = train_fresh_models(bvp_only, panas, 0,
+                                             f'AP Task BVP {panas:.1f}',
+                                             ap_train_bvp,
+                                             top_training_features,
+                                             None, folds=folds)
+        int_train_bvp, _ = train_fresh_models(bvp_only, panas, 1,
+                                              f'Int Task BVP {panas:.1f}',
+                                              int_train_bvp,
+                                              top_training_features,
+                                              None, folds=folds)
 
-    pd.DataFrame(top_features).to_excel(os.path.join('results', 'Top Evaluation Features.xlsx'))
-    pd.DataFrame(top_training_features).to_excel(os.path.join('results', 'Top Training Features.xlsx'))
+        # Prepare and save results
+        int_train_all_data.to_excel(os.path.join('results', 'Int All Data.xlsx'))
+        int_train_remove_acc.to_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
+        int_train_eda.to_excel(os.path.join('results', 'Int EDA.xlsx'))
+        int_train_hrv.to_excel(os.path.join('results', 'Int HRV.xlsx'))
+        int_train_acc.to_excel(os.path.join('results', 'Int ACC.xlsx'))
+        int_train_bvp.to_excel(os.path.join('results', 'Int BVP.xlsx'))
+        ap_train_all_data.to_excel(os.path.join('results', 'AP All Data.xlsx'))
+        ap_train_remove_acc.to_excel(os.path.join('results', 'AP Remove ACC.xlsx'))
+        ap_train_eda.to_excel(os.path.join('results', 'AP EDA.xlsx'))
+        ap_train_hrv.to_excel(os.path.join('results', 'AP HRV.xlsx'))
+        ap_train_acc.to_excel(os.path.join('results', 'AP ACC.xlsx'))
+        ap_train_bvp.to_excel(os.path.join('results', 'AP BVP.xlsx'))
+
+        pd.DataFrame(top_features).to_excel(os.path.join('results', 'Top Evaluation Features.xlsx'))
+        pd.DataFrame(top_training_features).to_excel(os.path.join('results', 'Top Training Features.xlsx'))
+
+    generate_figures(int_train_all_data, os.path.join('results', 'Int All Data.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, All Data")
+    generate_figures(int_train_remove_acc, os.path.join('results', 'Int Remove ACC.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, All Data Minus ACC")
+    generate_figures(int_train_eda, os.path.join('results', 'Int EDA.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only EDA")
+    generate_figures(int_train_hrv, os.path.join('results', 'Int HRV.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only HRV")
+    generate_figures(int_train_acc, os.path.join('results', 'Int ACC.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only ACC")
+    generate_figures(int_train_bvp, os.path.join('results', 'Int BVP.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only BVP")
+    generate_figures(ap_train_all_data, os.path.join('results', 'AP All Data.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, All Data")
+    generate_figures(ap_train_remove_acc, os.path.join('results', 'AP Remove ACC.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, All Data Minus ACC")
+    generate_figures(ap_train_eda, os.path.join('results', 'AP EDA.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only EDA")
+    generate_figures(ap_train_hrv, os.path.join('results', 'AP HRV.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only HRV")
+    generate_figures(ap_train_acc, os.path.join('results', 'AP ACC.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only ACC")
+    generate_figures(ap_train_bvp, os.path.join('results', 'AP BVP.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only BVP")
 
     # Record script time
     seconds = time.time() - start
     minutes = seconds / 60.0
     hours = minutes / 60.0
     days = hours / 24.0
-    print(f"\n\nThis process completed in {int(days)}:{int(hours) % 24}:{int(minutes) % 60}:{int(seconds) % 60}")
+    print(
+        f"\n\nThis process completed in {int(days)}:{int(hours) % 24:02d}:{int(minutes) % 60:02d}:{int(seconds) % 60:02d}")
