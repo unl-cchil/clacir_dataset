@@ -527,7 +527,7 @@ def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name
         if binary:
             clf_results.update({
                 f"Classifier": clf_name,
-                f"PANAS Threshold": panas,
+                f"PANAS Threshold": panas_threshold,
                 f"Balanced Accuracy": f"{np.mean(results_df['BAccuracy']) * 100:.2f} \u00B1 {np.std(results_df['BAccuracy']) * 100:.2f}",
                 f"Accuracy": f"{np.mean(results_df['Accuracy']) * 100:.2f} \u00B1 {np.std(results_df['Accuracy']) * 100:.2f}",
                 f"F1 Score": f"{np.mean(results_df['F1 Score']) * 100:.2f} \u00B1 {np.std(results_df['F1 Score']) * 100:.2f}",
@@ -663,11 +663,10 @@ if __name__ == '__main__':
     top_features = []
     top_training_features = []
 
-
-
-    for data in ["ACZ", "ACX", "ACY", "BVP", "HRV", "EDA"]:
-        clasir.generate_mean_data(all_data, "clacir", None, data)
-        clasir.generate_mean_plots(all_data,  "clacir", None, data)
+    for data, units in zip(["AC", "BVP", "HRV", "EDA"], ["Acceleration (g)", "Blood Volume Pulse", "Heart Rate Variability", "Electrodermal Activity (mS)"]):
+        clasir.generate_mean_data(all_data, "clacir", None, data, units, condition='hai')
+        clasir.generate_mean_data(all_data, "clacir", None, data, units, condition='control')
+        # clasir.generate_mean_plots(all_data,  "clacir", None, data)
 
     # Record script time
     seconds = time.time() - start

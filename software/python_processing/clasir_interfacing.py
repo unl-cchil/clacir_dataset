@@ -342,7 +342,9 @@ def load_clacir_dataset(filepath):
         pickle.dump(clacir_dataset, f)
     return clacir_dataset
 
-def generate_mean_data(datastreams=None, dataset_name="clacir", panas_threshold=None, data_to_plot="ACZ"):
+
+def generate_mean_data(datastreams=None, dataset_name="clacir", panas_threshold=None, data_to_plot="ACZ",
+                       units="Acceleration (g)", condition="hai"):
     if datastreams is None:
         datastreams = [True, True, True, True, True]
     print("Collecting cLACIr dataset...")
@@ -356,81 +358,180 @@ def generate_mean_data(datastreams=None, dataset_name="clacir", panas_threshold=
 
     longest_postcondition, longest_condition = 10000, 10000
     windows = 5000
-    fig, ax = plt.subplots(nrows=1, ncols=2)
-    fig.set_size_inches(18.5, 10.5)
-    fig.suptitle('Mean ' + data_to_plot)
-    ax[0].title.set_text("Condition")
-    ax[1].title.set_text("Postcondition")
-    hai_condition = None
-    hai_postcondition = None
-    control_condition = None
-    control_postcondition = None
-    for participant in dataset:
-        if panas_threshold is not None:
-            if dataset[participant]['panas_pos_diff'] < panas_threshold and dataset[participant]['condition'] == 'hai':
-                print(f"Skipping {participant} with PANAS Pos diff {dataset[participant]['panas_pos_diff']}")
-                continue
-        condition_data = np.array([x[0] for x, y in
-                    zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
-                    if y[0] in [2, 3]])
-        postcondition_data = np.array([x[0] for x, y in
-                    zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
-                    if y[0] in [4]])
-        if len(condition_data) == 0:
-            continue
-        if len(postcondition_data) == 0:
-            continue
-        condition_data = (condition_data - np.mean(condition_data)) / np.std(condition_data)
-        postcondition_data = (postcondition_data - np.mean(postcondition_data)) / np.std(postcondition_data)
-        if len(condition_data) < longest_condition:
-            if len(condition_data):
-                longest_condition = len(condition_data)
-        if len(postcondition_data) < longest_postcondition:
-            if len(postcondition_data):
-                longest_postcondition = len(postcondition_data)
-        participant_array = np.zeros(windows)
-        for idx, point in enumerate(condition_data):
-            participant_array[idx] = point
-        if dataset[participant]['condition'] == 'hai':
-            if hai_condition is None:
-                hai_condition = participant_array
-            else:
-                hai_condition = np.vstack([hai_condition, participant_array])
-            participant_array = np.zeros(windows)
-            for idx, point in enumerate(postcondition_data):
-                participant_array[idx] = point
-            if hai_postcondition is None:
-                hai_postcondition = participant_array
-            else:
-                hai_postcondition = np.vstack([hai_postcondition, participant_array])
+    hai_labels = [0, 1, 2, 4, 5]
+    control_labels = [0, 1, 3, 4, 5]
+    if condition == 'hai':
+        label_list = hai_labels
+    else:
+        label_list = control_labels
+    for label in label_list:
+        sample_length = 0
+        hai_condition, condition2, condition3 = None, None, None
+        labels = [label]
+        label_name = f"Class {label}"
+        plt.title(f"Mean {data_to_plot} for {units} in {condition.upper()} and Class {label}")
+        plt.xlabel("Sample Number")
+        plt.ylabel(units)
+        for participant in dataset:
+            if dataset[participant]['condition'] == condition:
+                if panas_threshold is not None:
+                    if dataset[participant]['panas_pos_diff'] < panas_threshold and dataset[participant]['condition'] == 'hai':
+                        print(f"Skipping {participant} with PANAS Pos diff {dataset[participant]['panas_pos_diff']}")
+                        continue
+                if data_to_plot == "AC":
+                    condition_data = np.array([x[0] for x, y in
+                                               zip(dataset[participant]['ACX Features'],
+                                                   dataset[participant]['LBL Features'])
+                                               if y[0] in labels])
+                    condition_data2 = np.array([x[0] for x, y in
+                                               zip(dataset[participant]['ACY Features'],
+                                                   dataset[participant]['LBL Features'])
+                                               if y[0] in labels])
+                    condition_data3 = np.array([x[0] for x, y in
+                                               zip(dataset[participant]['ACZ Features'],
+                                                   dataset[participant]['LBL Features'])
+                                               if y[0] in labels])
+                    if len(condition_data) == 0 or len(condition_data2) == 0 or len(condition_data3) == 0:
+                        continue
+                    if len(condition_data) > sample_length:
+                        sample_length = len(condition_data)
+                    condition_data = (condition_data - np.mean(condition_data)) / np.std(condition_data)
+                    condition_data2 = (condition_data2 - np.mean(condition_data2)) / np.std(condition_data2)
+                    condition_data3 = (condition_data3 - np.mean(condition_data3)) / np.std(condition_data3)
+                    if len(condition_data) < longest_condition:
+                        if len(condition_data):
+                            longest_condition = len(condition_data)
+                    participant_array = np.zeros(windows)
+                    participant_array2 = np.zeros(windows)
+                    participant_array3 = np.zeros(windows)
+                    for idx, point in enumerate(condition_data):
+                        participant_array[idx] = point
+                    for idx, point in enumerate(condition_data2):
+                        participant_array2[idx] = point
+                    for idx, point in enumerate(condition_data3):
+                        participant_array3[idx] = point
+                    if hai_condition is None:
+                        hai_condition = participant_array
+                        condition2 = participant_array2
+                        condition3 = participant_array3
+                    else:
+                        hai_condition = np.vstack([hai_condition, participant_array])
+                        condition2 = np.vstack([condition2, participant_array2])
+                        condition3 = np.vstack([condition3, participant_array3])
+                else:
+                    condition_data = np.array([x[0] for x, y in
+                                               zip(dataset[participant][data_to_plot + ' Features'],
+                                                   dataset[participant]['LBL Features'])
+                                               if y[0] in labels])
+                    if len(condition_data) == 0:
+                        continue
+                    if len(condition_data) > sample_length:
+                        sample_length = len(condition_data)
+                    condition_data = (condition_data - np.mean(condition_data)) / np.std(condition_data)
+                    if len(condition_data) < longest_condition:
+                        if len(condition_data):
+                            longest_condition = len(condition_data)
+                    participant_array = np.zeros(windows)
+                    for idx, point in enumerate(condition_data):
+                        participant_array[idx] = point
+                    if hai_condition is None:
+                        hai_condition = participant_array
+                    else:
+                        hai_condition = np.vstack([hai_condition, participant_array])
+        if data_to_plot == "AC":
+            hai_condition = hai_condition.mean(axis=0)
+            condition2 = condition2.mean(axis=0)
+            condition3 = condition3.mean(axis=0)
+            plt.plot(hai_condition[:sample_length], label="X")
+            plt.plot(condition2[:sample_length], label="Y")
+            plt.plot(condition3[:sample_length], label="Z")
+            plt.legend()
+            plt.savefig(os.path.join("mean_plots", f"{data_to_plot}_{label_name}_{condition}_mean_plot.png"), dpi=300)
+            plt.clf()
         else:
-            if control_condition is None:
-                control_condition = participant_array
-            else:
-                control_condition = np.vstack([control_condition, participant_array])
-            participant_array = np.zeros(windows)
-            for idx, point in enumerate(postcondition_data):
-                participant_array[idx] = point
-            if control_postcondition is None:
-                control_postcondition = participant_array
-            else:
-                control_postcondition = np.vstack([control_postcondition, participant_array])
-    hai_condition = hai_condition.mean(axis=0)
-    hai_postcondition = hai_postcondition.mean(axis=0)
-    control_condition = control_condition.mean(axis=0)
-    control_postcondition = control_postcondition.mean(axis=0)
-    ax[0].plot(hai_condition[:180], label="HAI")
-    ax[0].plot(control_condition[:180], label="Control")
-    ax[1].plot(hai_postcondition[:longest_postcondition], label="HAI")
-    ax[1].plot(control_postcondition[:longest_postcondition], label="Control")
-    print(f"Longest postcondition: {longest_postcondition}")
-    print(f"Longest condition: {longest_condition}")
-    ax[1].legend()
-    ax[0].legend()
-    fig.savefig(data_to_plot + '_all_mean_plot.png', dpi=100)
+            hai_condition = hai_condition.mean(axis=0)
+            plt.plot(hai_condition[:sample_length])
+            plt.savefig(os.path.join("mean_plots", f"{data_to_plot}_{label_name}_{condition}_mean_plot.png"), dpi=300)
+            plt.clf()
+
+    # fig, ax = plt.subplots(nrows=1, ncols=2)
+    # fig.set_size_inches(18.5, 10.5)
+    # fig.suptitle('Mean ' + data_to_plot)
+    # ax[0].title.set_text("Condition")
+    # ax[1].title.set_text("Postcondition")
+    # hai_condition = None
+    # hai_postcondition = None
+    # control_condition = None
+    # control_postcondition = None
+    # for participant in dataset:
+    #     if panas_threshold is not None:
+    #         if dataset[participant]['panas_pos_diff'] < panas_threshold and dataset[participant]['condition'] == 'hai':
+    #             print(f"Skipping {participant} with PANAS Pos diff {dataset[participant]['panas_pos_diff']}")
+    #             continue
+    #     condition_data = np.array([x[0] for x, y in
+    #                                zip(dataset[participant][data_to_plot + ' Features'],
+    #                                    dataset[participant]['LBL Features'])
+    #                                if y[0] in [2, 3]])
+    #     postcondition_data = np.array([x[0] for x, y in
+    #                                    zip(dataset[participant][data_to_plot + ' Features'],
+    #                                        dataset[participant]['LBL Features'])
+    #                                    if y[0] in [4]])
+    #     if len(condition_data) == 0:
+    #         continue
+    #     if len(postcondition_data) == 0:
+    #         continue
+    #     condition_data = (condition_data - np.mean(condition_data)) / np.std(condition_data)
+    #     postcondition_data = (postcondition_data - np.mean(postcondition_data)) / np.std(postcondition_data)
+    #     if len(condition_data) < longest_condition:
+    #         if len(condition_data):
+    #             longest_condition = len(condition_data)
+    #     if len(postcondition_data) < longest_postcondition:
+    #         if len(postcondition_data):
+    #             longest_postcondition = len(postcondition_data)
+    #     participant_array = np.zeros(windows)
+    #     for idx, point in enumerate(condition_data):
+    #         participant_array[idx] = point
+    #     if dataset[participant]['condition'] == 'hai':
+    #         if hai_condition is None:
+    #             hai_condition = participant_array
+    #         else:
+    #             hai_condition = np.vstack([hai_condition, participant_array])
+    #         participant_array = np.zeros(windows)
+    #         for idx, point in enumerate(postcondition_data):
+    #             participant_array[idx] = point
+    #         if hai_postcondition is None:
+    #             hai_postcondition = participant_array
+    #         else:
+    #             hai_postcondition = np.vstack([hai_postcondition, participant_array])
+    #     else:
+    #         if control_condition is None:
+    #             control_condition = participant_array
+    #         else:
+    #             control_condition = np.vstack([control_condition, participant_array])
+    #         participant_array = np.zeros(windows)
+    #         for idx, point in enumerate(postcondition_data):
+    #             participant_array[idx] = point
+    #         if control_postcondition is None:
+    #             control_postcondition = participant_array
+    #         else:
+    #             control_postcondition = np.vstack([control_postcondition, participant_array])
+    # hai_condition = hai_condition.mean(axis=0)
+    # hai_postcondition = hai_postcondition.mean(axis=0)
+    # control_condition = control_condition.mean(axis=0)
+    # control_postcondition = control_postcondition.mean(axis=0)
+    # ax[0].plot(hai_condition[:180], label="HAI")
+    # ax[0].plot(control_condition[:180], label="Control")
+    # ax[1].plot(hai_postcondition[:longest_postcondition], label="HAI")
+    # ax[1].plot(control_postcondition[:longest_postcondition], label="Control")
+    # print(f"Longest postcondition: {longest_postcondition}")
+    # print(f"Longest condition: {longest_condition}")
+    # ax[1].legend()
+    # ax[0].legend()
+    # fig.savefig(os.path.join("mean_plots", f"{data_to_plot}_mean_plot.png"), dpi=100)
 
 
-def generate_mean_plots(datastreams=None, dataset_name="clacir", panas_threshold=None, data_to_plot="ACZ"):
+def generate_mean_plots(datastreams=None, dataset_name="clacir", panas_threshold=None, data_to_plot="ACZ",
+                        units="Acceleration (g)", condition="hai"):
     if datastreams is None:
         datastreams = [True, True, True, True, True]
     print("Collecting cLACIr dataset...")
@@ -442,43 +543,64 @@ def generate_mean_plots(datastreams=None, dataset_name="clacir", panas_threshold
     else:
         dataset = load_clacir_dataset('datasets/clacir_raw')
 
-    subjects, labels = [], []
+    # subjects, labels = [], []
 
-    fig, ax = plt.subplots(nrows=2, ncols=2)
-    fig.set_size_inches(18.5, 10.5)
-    fig.suptitle('Mean ' + data_to_plot)
-    ax[0, 0].title.set_text("HAI Condition")
-    ax[0, 1].title.set_text("HAI Postcondition")
-    ax[1, 0].title.set_text("Control Condition")
-    ax[1, 1].title.set_text("Control Postcondition")
-    for participant in dataset:
-        if panas_threshold is not None:
-            if dataset[participant]['panas_pos_diff'] < panas_threshold and dataset[participant]['condition'] == 'hai':
-                print(f"Skipping {participant} with PANAS Pos diff {dataset[participant]['panas_pos_diff']}")
-                continue
-        if dataset[participant]['condition'] == 'hai':
-            eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
-                        if y[0] in [2, 3]]
-            # if data_to_plot == "EDA":
-            eda_mean = eda_mean/np.linalg.norm(eda_mean)
-            ax[0, 0].plot(eda_mean)
-            eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
-                        if y[0] in [4]]
-            # if data_to_plot == "EDA":
-            eda_mean = eda_mean/np.linalg.norm(eda_mean)
-            ax[0, 1].plot(eda_mean)
-        else:
-            eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
-                        if y[0] in [2, 3]]
-            # if data_to_plot == "EDA":
-            eda_mean = eda_mean/np.linalg.norm(eda_mean)
-            ax[1, 0].plot(eda_mean)
-            eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
-                        if y[0] in [4]]
-            # if data_to_plot == "EDA":
-            eda_mean = eda_mean/np.linalg.norm(eda_mean)
-            ax[1, 1].plot(eda_mean)
-    fig.savefig(data_to_plot + '_mean_plot.png', dpi=100)
+    # Plot label 0
+    for label in range(0, 6):
+        labels = [label]
+        label_name = f"Class {label}"
+        plt.title(f"Mean {data_to_plot} for {units} in {condition.upper()}")
+        plt.xlabel("Sample Number")
+        plt.ylabel(units)
+        for participant in dataset:
+            if panas_threshold is not None:
+                if dataset[participant]['panas_pos_diff'] < panas_threshold and dataset[participant][
+                    'condition'] == 'hai':
+                    print(f"Skipping {participant} with PANAS Pos diff {dataset[participant]['panas_pos_diff']}")
+                    continue
+            if dataset[participant]['condition'] == condition:
+                data_mean = [x[0] for x, y in
+                             zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
+                             if y[0] in labels]
+                data_mean = data_mean / np.linalg.norm(data_mean)
+                plt.plot(data_mean)
+        plt.savefig(os.path.join("all_data_plots", f"{data_to_plot}_{label_name}_{condition}_all_mean_plot.png"), dpi=300)
+        plt.clf()
+    # fig, ax = plt.subplots(nrows=2, ncols=2)
+    # fig.set_size_inches(18.5, 10.5)
+    # fig.suptitle('Mean ' + data_to_plot)
+    # ax[0, 0].title.set_text("HAI Condition")
+    # ax[0, 1].title.set_text("HAI Postcondition")
+    # ax[1, 0].title.set_text("Control Condition")
+    # ax[1, 1].title.set_text("Control Postcondition")
+    # for participant in dataset:
+    #     if panas_threshold is not None:
+    #         if dataset[participant]['panas_pos_diff'] < panas_threshold and dataset[participant]['condition'] == 'hai':
+    #             print(f"Skipping {participant} with PANAS Pos diff {dataset[participant]['panas_pos_diff']}")
+    #             continue
+    #     if dataset[participant]['condition'] == 'hai':
+    #         eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
+    #                     if y[0] in [2, 3]]
+    #         # if data_to_plot == "EDA":
+    #         eda_mean = eda_mean/np.linalg.norm(eda_mean)
+    #         ax[0, 0].plot(eda_mean)
+    #         eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
+    #                     if y[0] in [4]]
+    #         # if data_to_plot == "EDA":
+    #         eda_mean = eda_mean/np.linalg.norm(eda_mean)
+    #         ax[0, 1].plot(eda_mean)
+    #     else:
+    #         eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
+    #                     if y[0] in [2, 3]]
+    #         # if data_to_plot == "EDA":
+    #         eda_mean = eda_mean/np.linalg.norm(eda_mean)
+    #         ax[1, 0].plot(eda_mean)
+    #         eda_mean = [x[0] for x, y in zip(dataset[participant][data_to_plot + ' Features'], dataset[participant]['LBL Features'])
+    #                     if y[0] in [4]]
+    #         # if data_to_plot == "EDA":
+    #         eda_mean = eda_mean/np.linalg.norm(eda_mean)
+    #         ax[1, 1].plot(eda_mean)
+    # fig.savefig(os.path.join("mean_plots", f"{data_to_plot}_all_mean_plot.png"), dpi=100)
 
 
 def generate_dataset(datastreams=None, dataset_name="clacir", panas_threshold=None):
