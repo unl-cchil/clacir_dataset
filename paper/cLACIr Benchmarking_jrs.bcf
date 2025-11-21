@@ -2396,11 +2396,11 @@
     <bcf:citekey order="13" intorder="1">thayer2022effects</bcf:citekey>
     <bcf:citekey order="14" intorder="1">thayer2022effects</bcf:citekey>
     <bcf:citekey order="15" intorder="1">thayer2022effects</bcf:citekey>
-    <bcf:citekey order="16" intorder="1">poh2010wearable</bcf:citekey>
-    <bcf:citekey order="17" intorder="1">phippsassessing</bcf:citekey>
-    <bcf:citekey order="18" intorder="1">arce2021biosensor</bcf:citekey>
-    <bcf:citekey order="19" intorder="1">goodwin2019predicting</bcf:citekey>
-    <bcf:citekey order="19" intorder="2">arce2023detecting</bcf:citekey>
+    <bcf:citekey order="16" intorder="1">phippsassessing</bcf:citekey>
+    <bcf:citekey order="17" intorder="1">arce2021biosensor</bcf:citekey>
+    <bcf:citekey order="18" intorder="1">goodwin2019predicting</bcf:citekey>
+    <bcf:citekey order="18" intorder="2">arce2023detecting</bcf:citekey>
+    <bcf:citekey order="19" intorder="1">thayer2022effects</bcf:citekey>
     <bcf:citekey order="20" intorder="1">roediger1995creating</bcf:citekey>
     <bcf:citekey order="20" intorder="2">mcevoy1999connection</bcf:citekey>
     <bcf:citekey order="21" intorder="1">orbach1963reversibility</bcf:citekey>
@@ -2410,66 +2410,60 @@
     <bcf:citekey order="23" intorder="1">rich2007effects</bcf:citekey>
     <bcf:citekey order="23" intorder="2">cohen1994activation</bcf:citekey>
     <bcf:citekey order="24" intorder="1">peirce2019psychopy2</bcf:citekey>
-    <bcf:citekey order="25" intorder="1">handlin2011short</bcf:citekey>
-    <bcf:citekey order="26" intorder="1">watson1988development</bcf:citekey>
-    <bcf:citekey order="27" intorder="1">spielberger1999measuring</bcf:citekey>
-    <bcf:citekey order="28" intorder="1">cella1986reliability</bcf:citekey>
-    <bcf:citekey order="29" intorder="1">shaffer2017overview</bcf:citekey>
-    <bcf:citekey order="29" intorder="2">thayer2022effects</bcf:citekey>
-    <bcf:citekey order="29" intorder="3">Stevens2020EffectsOH</bcf:citekey>
-    <bcf:citekey order="30" intorder="1">goodwin2019predicting</bcf:citekey>
-    <bcf:citekey order="30" intorder="2">thayer2022effects</bcf:citekey>
-    <bcf:citekey order="30" intorder="3">schmidt2018introducing</bcf:citekey>
-    <bcf:citekey order="31" intorder="1">poh2010wearable</bcf:citekey>
-    <bcf:citekey order="32" intorder="1">taj2018review</bcf:citekey>
+    <bcf:citekey order="25" intorder="1">watson1988development</bcf:citekey>
+    <bcf:citekey order="26" intorder="1">spielberger1999measuring</bcf:citekey>
+    <bcf:citekey order="27" intorder="1">cella1986reliability</bcf:citekey>
+    <bcf:citekey order="28" intorder="1">goodwin2019predicting</bcf:citekey>
+    <bcf:citekey order="28" intorder="2">schmidt2018introducing</bcf:citekey>
+    <bcf:citekey order="29" intorder="1">poh2010wearable</bcf:citekey>
+    <bcf:citekey order="30" intorder="1">taj2018review</bcf:citekey>
+    <bcf:citekey order="31" intorder="1">goodwin2019predicting</bcf:citekey>
+    <bcf:citekey order="32" intorder="1">goodwin2019predicting</bcf:citekey>
     <bcf:citekey order="33" intorder="1">goodwin2019predicting</bcf:citekey>
-    <bcf:citekey order="34" intorder="1">goodwin2019predicting</bcf:citekey>
-    <bcf:citekey order="35" intorder="1">goodwin2019predicting</bcf:citekey>
-    <bcf:citekey order="36" intorder="1">ravi2005activity</bcf:citekey>
-    <bcf:citekey order="37" intorder="1">thang2012gait</bcf:citekey>
-    <bcf:citekey order="38" intorder="1">kreibig2010autonomic</bcf:citekey>
-    <bcf:citekey order="39" intorder="1">healey2005detecting</bcf:citekey>
+    <bcf:citekey order="34" intorder="1">ravi2005activity</bcf:citekey>
+    <bcf:citekey order="35" intorder="1">thang2012gait</bcf:citekey>
+    <bcf:citekey order="36" intorder="1">kreibig2010autonomic</bcf:citekey>
+    <bcf:citekey order="37" intorder="1">healey2005detecting</bcf:citekey>
+    <bcf:citekey order="38" intorder="1">society2012publication</bcf:citekey>
+    <bcf:citekey order="38" intorder="2">arce2021biosensor</bcf:citekey>
+    <bcf:citekey order="39" intorder="1">greco2015cvxeda</bcf:citekey>
     <bcf:citekey order="40" intorder="1">society2012publication</bcf:citekey>
-    <bcf:citekey order="40" intorder="2">arce2021biosensor</bcf:citekey>
-    <bcf:citekey order="41" intorder="1">greco2015cvxeda</bcf:citekey>
-    <bcf:citekey order="42" intorder="1">society2012publication</bcf:citekey>
-    <bcf:citekey order="42" intorder="2">benedek2010continuous</bcf:citekey>
-    <bcf:citekey order="43" intorder="1">kreibig2010autonomic</bcf:citekey>
-    <bcf:citekey order="44" intorder="1">collet1997autonomic</bcf:citekey>
-    <bcf:citekey order="44" intorder="2">salazar2015mental</bcf:citekey>
-    <bcf:citekey order="44" intorder="3">karthikeyan2012descriptive</bcf:citekey>
+    <bcf:citekey order="40" intorder="2">benedek2010continuous</bcf:citekey>
+    <bcf:citekey order="41" intorder="1">kreibig2010autonomic</bcf:citekey>
+    <bcf:citekey order="42" intorder="1">collet1997autonomic</bcf:citekey>
+    <bcf:citekey order="42" intorder="2">salazar2015mental</bcf:citekey>
+    <bcf:citekey order="42" intorder="3">karthikeyan2012descriptive</bcf:citekey>
+    <bcf:citekey order="43" intorder="1">karthikeyan2012descriptive</bcf:citekey>
+    <bcf:citekey order="44" intorder="1">salazar2015mental</bcf:citekey>
     <bcf:citekey order="45" intorder="1">karthikeyan2012descriptive</bcf:citekey>
-    <bcf:citekey order="46" intorder="1">salazar2015mental</bcf:citekey>
-    <bcf:citekey order="47" intorder="1">karthikeyan2012descriptive</bcf:citekey>
-    <bcf:citekey order="48" intorder="1">collet1997autonomic</bcf:citekey>
-    <bcf:citekey order="49" intorder="1">van2019heartpy</bcf:citekey>
-    <bcf:citekey order="50" intorder="1">kreibig2010autonomic</bcf:citekey>
-    <bcf:citekey order="51" intorder="1">thayer2022effects</bcf:citekey>
-    <bcf:citekey order="52" intorder="1">Stevens2020EffectsOH</bcf:citekey>
-    <bcf:citekey order="53" intorder="1">arce2023unobtrusive</bcf:citekey>
-    <bcf:citekey order="54" intorder="1">foll2021flirt</bcf:citekey>
-    <bcf:citekey order="55" intorder="1">greco2015cvxeda</bcf:citekey>
-    <bcf:citekey order="56" intorder="1">foll2021flirt</bcf:citekey>
-    <bcf:citekey order="57" intorder="1">schmidt2018introducing</bcf:citekey>
-    <bcf:citekey order="57" intorder="2">phippsassessing</bcf:citekey>
-    <bcf:citekey order="58" intorder="1">schmidt2018introducing</bcf:citekey>
-    <bcf:citekey order="59" intorder="1">pedregosa2011scikit</bcf:citekey>
-    <bcf:citekey order="60" intorder="1">hastie2009elements</bcf:citekey>
-    <bcf:citekey order="61" intorder="1">wetcher2011analyzing</bcf:citekey>
-    <bcf:citekey order="62" intorder="1">breiman1984nonlinear</bcf:citekey>
-    <bcf:citekey order="63" intorder="1">breiman1999random</bcf:citekey>
-    <bcf:citekey order="64" intorder="1">hinton1990connectionist</bcf:citekey>
-    <bcf:citekey order="65" intorder="1">kingma2014adam</bcf:citekey>
-    <bcf:citekey order="66" intorder="1">pedregosa2011scikit</bcf:citekey>
-    <bcf:citekey order="67" intorder="1">d2018affective</bcf:citekey>
+    <bcf:citekey order="46" intorder="1">collet1997autonomic</bcf:citekey>
+    <bcf:citekey order="47" intorder="1">van2019heartpy</bcf:citekey>
+    <bcf:citekey order="48" intorder="1">kreibig2010autonomic</bcf:citekey>
+    <bcf:citekey order="49" intorder="1">thayer2022effects</bcf:citekey>
+    <bcf:citekey order="50" intorder="1">shaffer2017overview</bcf:citekey>
+    <bcf:citekey order="51" intorder="1">arce2023unobtrusive</bcf:citekey>
+    <bcf:citekey order="52" intorder="1">foll2021flirt</bcf:citekey>
+    <bcf:citekey order="53" intorder="1">greco2015cvxeda</bcf:citekey>
+    <bcf:citekey order="54" intorder="1">schmidt2018introducing</bcf:citekey>
+    <bcf:citekey order="54" intorder="2">phippsassessing</bcf:citekey>
+    <bcf:citekey order="55" intorder="1">schmidt2018introducing</bcf:citekey>
+    <bcf:citekey order="56" intorder="1">pedregosa2011scikit</bcf:citekey>
+    <bcf:citekey order="57" intorder="1">hastie2009elements</bcf:citekey>
+    <bcf:citekey order="58" intorder="1">wetcher2011analyzing</bcf:citekey>
+    <bcf:citekey order="59" intorder="1">breiman1984nonlinear</bcf:citekey>
+    <bcf:citekey order="60" intorder="1">breiman1999random</bcf:citekey>
+    <bcf:citekey order="61" intorder="1">hinton1990connectionist</bcf:citekey>
+    <bcf:citekey order="62" intorder="1">kingma2014adam</bcf:citekey>
+    <bcf:citekey order="63" intorder="1">pedregosa2011scikit</bcf:citekey>
+    <bcf:citekey order="64" intorder="1">d2018affective</bcf:citekey>
+    <bcf:citekey order="65" intorder="1">schmidt2018introducing</bcf:citekey>
+    <bcf:citekey order="66" intorder="1">gjoreski2020datasets</bcf:citekey>
+    <bcf:citekey order="67" intorder="1">gjoreski2020datasets</bcf:citekey>
     <bcf:citekey order="68" intorder="1">schmidt2018introducing</bcf:citekey>
     <bcf:citekey order="69" intorder="1">gjoreski2020datasets</bcf:citekey>
-    <bcf:citekey order="70" intorder="1">gjoreski2020datasets</bcf:citekey>
-    <bcf:citekey order="71" intorder="1">schmidt2018introducing</bcf:citekey>
-    <bcf:citekey order="72" intorder="1">gjoreski2020datasets</bcf:citekey>
-    <bcf:citekey order="73" intorder="1">schmidt2018introducing</bcf:citekey>
-    <bcf:citekey order="74" intorder="1">sharma2019dataset</bcf:citekey>
-    <bcf:citekey order="75" intorder="1">schmidt2018introducing</bcf:citekey>
+    <bcf:citekey order="70" intorder="1">schmidt2018introducing</bcf:citekey>
+    <bcf:citekey order="71" intorder="1">sharma2019dataset</bcf:citekey>
+    <bcf:citekey order="72" intorder="1">schmidt2018introducing</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">
