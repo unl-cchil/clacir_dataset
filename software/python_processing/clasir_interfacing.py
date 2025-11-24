@@ -369,7 +369,7 @@ def generate_mean_data(datastreams=None, dataset_name="clacir", panas_threshold=
         hai_condition, condition2, condition3 = None, None, None
         labels = [label]
         label_name = f"Class {label}"
-        plt.title(f"Mean {data_to_plot} for {units} in {condition.upper()} and Class {label}")
+        plt.title(f"Mean {units} for Class {label} {condition.upper()}")
         plt.xlabel("Sample Number")
         plt.ylabel(units)
         for participant in dataset:

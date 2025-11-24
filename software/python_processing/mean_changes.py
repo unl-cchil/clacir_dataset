@@ -53,6 +53,20 @@ from sklearn.preprocessing import label_binarize, StandardScaler
 from sklearn.utils import shuffle
 import clasir_interfacing as clasir
 import matplotlib.pyplot as plt
+import scienceplots
+plt.style.use(['science', 'ieee'])
+
+
+plot_params = {
+    "axes.titlesize": 10,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 6,
+    "ytick.labelsize": 6,
+    "legend.title_fontsize": 8,
+    "legend.fontsize": 8
+}
+
+plt.rcParams.update(plot_params)
 
 bvp_feature_names = [
     'bvp_mean', 'bvp_std', 'bvp_min', 'bvp_max', 'bvp_ptp', 'bvp_sum', 'bvp_energy',
@@ -666,7 +680,6 @@ if __name__ == '__main__':
     for data, units in zip(["AC", "BVP", "HRV", "EDA"], ["Acceleration (g)", "Blood Volume Pulse", "Heart Rate Variability", "Electrodermal Activity (mS)"]):
         clasir.generate_mean_data(all_data, "clacir", None, data, units, condition='hai')
         clasir.generate_mean_data(all_data, "clacir", None, data, units, condition='control')
-        # clasir.generate_mean_plots(all_data,  "clacir", None, data)
 
     # Record script time
     seconds = time.time() - start
