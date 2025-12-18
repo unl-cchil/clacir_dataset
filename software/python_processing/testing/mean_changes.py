@@ -51,7 +51,7 @@ from sklearn.model_selection import StratifiedGroupKFold, GroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import label_binarize, StandardScaler
 from sklearn.utils import shuffle
-import clasir_interfacing as clasir
+import clacir_interfacing as clasir
 import matplotlib.pyplot as plt
 import scienceplots
 plt.style.use(['science', 'ieee'])

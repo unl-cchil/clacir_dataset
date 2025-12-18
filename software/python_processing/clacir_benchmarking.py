@@ -40,8 +40,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-import signal_processing
-
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import os
@@ -56,7 +54,7 @@ from sklearn.model_selection import StratifiedGroupKFold, GroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import label_binarize, StandardScaler
 from sklearn.utils import shuffle
-import clasir_interfacing as clasir
+import clacir_interfacing as clacir
 import matplotlib.pyplot as plt
 import scienceplots
 plt.style.use(['science', 'ieee'])
@@ -257,7 +255,7 @@ def calculate_eer(y_true, y_score):
 
 
 def stratifiedgroupkfold_test():
-    clasir_multi, clasir_binary = clasir.windowed_feature_extraction(5)
+    clasir_multi, clasir_binary = clacir.windowed_feature_extraction(5)
     groups = []
     datasets = clasir_binary
     for i in range(0, len(datasets[0])):
@@ -418,7 +416,7 @@ def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name
             # MLPClassifier(max_iter=1000)
         ]
     if not os.path.exists(os.path.join('results', str(experiment_name))):
-        datasets = clasir.generate_dataset(datastreams=datastreams,
+        datasets = clacir.generate_dataset(datastreams=datastreams,
                                            panas_threshold=panas_threshold)[experiment]
         get_dataset_stats(datasets, experiment_name)
 
@@ -685,7 +683,7 @@ def train_fresh_models_batch_test(datastreams, panas_threshold, experiment, expe
             # MLPClassifier(max_iter=1000)
         ]
     if not os.path.exists(os.path.join('results', str(experiment_name))):
-        datasets = clasir.generate_dataset(datastreams=datastreams,
+        datasets = clacir.generate_dataset(datastreams=datastreams,
                                            panas_threshold=panas_threshold)[experiment]
         get_dataset_stats(datasets, experiment_name)
 
@@ -778,8 +776,8 @@ def train_fresh_models_batch_test(datastreams, panas_threshold, experiment, expe
                     postcondition_data = [i for i in range(len(y_val[group])) if (y_val[group])[i] == 0]
                     # Iterate through and calculate balanced accuracy for batched data (100 samples?)
                     group_balanced_acc = []
-                    for val, hat in zip(signal_processing.split_set(y_val[postcondition_data], test_samples, test_samples),
-                                        signal_processing.split_set(y_hat[postcondition_data], test_samples, test_samples)):
+                    for val, hat in zip(clacir.split_set(y_val[postcondition_data], test_samples, test_samples),
+                                        clacir.split_set(y_hat[postcondition_data], test_samples, test_samples)):
                         group_balanced_acc.append(balanced_accuracy_score(val, hat))
                     groups_balanced_acc.append(group_balanced_acc)
 

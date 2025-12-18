@@ -10,7 +10,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 import case_interfacing as case
-import clasir_interfacing as clasir
+import clacir_interfacing as clasir
 import wesad_interfacing as wesad
 
 

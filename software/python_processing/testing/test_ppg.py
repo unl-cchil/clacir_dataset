@@ -17,7 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from wesad_interfacing import load_wesad_dataset
-import clasir_interfacing as clasir
+import clacir_interfacing as clasir
 
 clasir.generate_dataset()
 

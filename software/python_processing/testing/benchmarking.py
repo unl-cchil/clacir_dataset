@@ -54,7 +54,7 @@ from sklearn.tree import DecisionTreeClassifier
 from eli5.sklearn import PermutationImportance
 
 import case_interfacing as case
-import clasir_interfacing as clasir
+import clacir_interfacing as clasir
 import wesad_interfacing as wesad
 
 feature_names = ['hrv_mean', 'hrv_std', 'hrv_min', 'hrv_max', 'hrv_ptp', 'hrv_sum', 'hrv_energy',
