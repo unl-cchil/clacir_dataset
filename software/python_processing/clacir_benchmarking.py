@@ -254,30 +254,6 @@ def calculate_eer(y_true, y_score):
     return eer
 
 
-def stratifiedgroupkfold_test():
-    clasir_multi, clasir_binary = clacir.windowed_feature_extraction(5)
-    groups = []
-    datasets = clasir_binary
-    for i in range(0, len(datasets[0])):
-        group = np.ndarray(len(datasets[0][i]))
-        group[:] = i
-        groups.extend(group)
-    k_fold = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=1)
-    x = np.vstack(datasets[0])
-    y = np.vstack(datasets[1]).ravel()
-    for train_ix, test_ix in k_fold.split(x, y, groups=groups):
-        train_sort = sorted(set(np.array(groups)[train_ix]))
-        test_sort = sorted(set(np.array(groups)[test_ix]))
-        print(f"Overlapping Identities: {np.any(train_sort == test_sort)}")
-        print(f"Train Sorted: {np.all(sorted(train_ix) == train_ix)}")
-        print(f"Training Identities: {len(train_sort)}")
-        print(f"Test Sorted: {np.all(sorted(test_ix) == test_ix)}")
-        print(f"Testing Identities: {len(test_sort)}")
-        print(
-            f"Train / Test Percentage: {(len(train_ix) / len(x)) * 100:.2f} % / {(len(test_ix) / len(x)) * 100:.2f} %")
-        print()
-
-
 def evaluate_pretrained_models(clfs, datasets, experiment_name, mda_features, report_df, features, binary=True):
     if not os.path.exists(os.path.join('results', str(experiment_name))):
         os.mkdir(os.path.join('results', str(experiment_name)))
