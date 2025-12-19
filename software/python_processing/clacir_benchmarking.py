@@ -23,8 +23,8 @@ cognitive Load and Canine Intervention recognition (cLACIr) Dataset Benchmarking
     skip it.
 
 Author:     Walker Arce
-Version:    3
-Date:       17 Mar 2023
+Version:    4
+Date:       19 December 2025
 """
 import copy
 import random
@@ -37,7 +37,6 @@ from scipy.interpolate import interp1d
 from scipy.optimize import brentq
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -136,33 +135,21 @@ all_data_remove_acc = [True, True, False, False, True]
 
 
 def get_dataset_stats(dataset, name):
-    return
-    # dataset_df = pd.DataFrame()
-    # subjects = dataset[0]
-    # labels = dataset[1]
-    # for i in range(0, len(subjects)):
-    #     classes = list(set(labels[i].ravel()))
-    #     subject_data = {f"ID": f"Subject {i}"}
-    #     for c in classes:
-    #         subject_data.update({
-    #             f"Class {c}": len(np.where(labels[i].ravel() == c)[0])
-    #         })
-    #     dataset_df = dataset_df.append(subject_data, ignore_index=True)
-    # dataset_df.set_index("ID", inplace=True)
-    # dataset_df.to_excel(os.path.join('dataset_stats', f"{name} Stats.xlsx"))
-
-
-def calculate_permutation_importance(model, x_test, features):
-    score_set = []
-    original_x_test = copy.deepcopy(x_test)
-    original_scores = model.predict_proba(x_test)[:, 1]
-    for col in range(x_test.shape[1]):
-        x_test[:, col] = np.random.rand(*x_test[:, col].shape)
-        random_score = model.predict_proba(x_test)[:, 1]
-        x_test[:, col] = original_x_test[:, col]
-        score_set.append(original_scores - random_score)
-    final_scores = pd.DataFrame(np.concatenate(np.expand_dims(score_set, axis=1), axis=0).transpose(), columns=features)
-    final_scores.to_excel("test_perm.xlsx")
+    if not os.path.exists('dataset_stats'):
+        os.mkdir('dataset_stats')
+    dataset_df = pd.DataFrame()
+    subjects = dataset[0]
+    labels = dataset[1]
+    for i in range(0, len(subjects)):
+        classes = list(set(labels[i].ravel()))
+        subject_data = {f"ID": f"Subject {i}"}
+        for c in classes:
+            subject_data.update({
+                f"Class {c}": len(np.where(labels[i].ravel() == c)[0])
+            })
+        dataset_df = dataset_df.append(subject_data, ignore_index=True)
+    dataset_df.set_index("ID", inplace=True)
+    dataset_df.to_excel(os.path.join('dataset_stats', f"{name} Stats.xlsx"))
 
 
 def calculate_inverted_permutation_importance_array(model, x_test, y_test, features):
@@ -183,18 +170,6 @@ def calculate_inverted_permutation_importance_array(model, x_test, y_test, featu
         score_set.append(original_accuracy)
     final_scores = pd.DataFrame(np.concatenate(np.expand_dims(np.array(score_set).transpose(), axis=1), axis=0).transpose(), index=['original'] + feature_set)
     return final_scores
-
-
-def calculate_inverted_permutation_importance(model, x_test, y_test, features):
-    score_set = []
-    original_scores = model.predict_proba(x_test)[:, 1]
-    for col in range(x_test.shape[1]):
-        random_test = np.random.rand(*x_test.shape)
-        random_test[:, col] = x_test[:, col]
-        random_score = model.predict_proba(random_test)[:, 1]
-        score_set.append(original_scores - random_score)
-    final_scores = pd.DataFrame(np.concatenate(np.expand_dims(score_set, axis=1), axis=0).transpose(), columns=features)
-    final_scores.to_excel("test_inverted_perm.xlsx")
 
 
 def get_feature_importance(model, x_test, y_test, fi_df, features):
@@ -254,126 +229,11 @@ def calculate_eer(y_true, y_score):
     return eer
 
 
-def evaluate_pretrained_models(clfs, datasets, experiment_name, mda_features, report_df, features, binary=True):
-    if not os.path.exists(os.path.join('results', str(experiment_name))):
-        os.mkdir(os.path.join('results', str(experiment_name)))
-        x_test = np.vstack((datasets[0]))
-        y_test = np.vstack((datasets[1])).ravel()
-
-        if binary:
-            model_df = dict(
-                (sub, []) for sub in
-                ['F1 Score', 'Accuracy', 'AUC', 'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR', 'TPR@5%FPR', 'EER', 'Model'])
-        else:
-            model_df = dict(
-                (sub, []) for sub in
-                ['F1 Score', 'Accuracy', 'mAUC', 'mAP', 'mAUPRC', 'Kappa', 'mTPR@1%FPR', 'mTPR@5%FPR', 'mEER', 'Model'])
-        for clf in clfs:
-            print(f"Testing {str(clf)} on {experiment_name}")
-            y_hat_probs = clf.predict_proba(x_test)
-            y_hat = np.argmax(y_hat_probs, axis=1)
-            if features is not None:
-                feature_importance_df = dict()
-                get_feature_importance(clf, x_test, y_test, 'eval', feature_importance_df)
-                features_df = pd.DataFrame(feature_importance_df, index=features).transpose()
-                features_df.to_csv(
-                    os.path.join('results', str(experiment_name),
-                                 f'{str(clf.named_steps["clf"])[0:5]}_{experiment_name}_fi.csv'))
-                features_df.describe().to_csv(
-                    os.path.join(os.path.join('results', str(experiment_name),
-                                              f'{str(clf.named_steps["clf"])[0:5]}_{experiment_name}_fi_explain.csv')))
-            if binary:
-                model_df['AP'].append(average_precision_score(y_test, y_hat_probs[:, 1], average='weighted'))
-                model_df['AUC'].append(roc_auc_score(y_test, y_hat_probs[:, 1], average='weighted'))
-                model_df['EER'].append(calculate_eer(y_test, y_hat_probs[:, 1]))
-                model_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_test, y_hat_probs[:, 1]))
-                model_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_test, y_hat_probs[:, 1]))
-                model_df['AUPRC'].append(calculate_auprc(y_test, y_hat_probs[:, 1]))
-            else:
-                y_score = label_binarize(y_test, classes=[0, 1, 2])
-                mean_average_precision = 0
-                eer = 0
-                tpr_1_per, tpr_5_per = 0, 0
-                roc_auc = 0
-                pr_auc = 0
-                for i in range(3):
-                    tpr_1_per += calculate_tpr_10_per(y_score[:, i], y_hat_probs[:, i])
-                    tpr_5_per += calculate_tpr_5_per(y_score[:, i], y_hat_probs[:, i])
-                    eer += calculate_eer(y_score[:, i], y_hat_probs[:, i])
-                    mean_average_precision += average_precision_score(y_score[:, i], y_hat_probs[:, i],
-                                                                      average='weighted')
-                    roc_auc += roc_auc_score(y_score[:, i], y_hat_probs[:, i], average='weighted')
-                    pr_auc += calculate_auprc(y_score[:, i], y_hat_probs[:, i])
-                model_df['mAP'].append(float(mean_average_precision) / 3.0)
-                model_df['mEER'].append(float(eer) / 3.0)
-                model_df['mTPR@1%FPR'].append(float(tpr_1_per) / 3.0)
-                model_df['mTPR@5%FPR'].append(float(tpr_5_per) / 3.0)
-                model_df['mAUC'].append(float(roc_auc) / 3.0)
-                model_df['mAUPRC'].append(float(pr_auc) / 3.0)
-            model_df['Accuracy'].append(balanced_accuracy_score(y_test, y_hat))
-            model_df['Kappa'].append(cohen_kappa_score(y_test, y_hat))
-            model_df['F1 Score'].append(f1_score(y_test, y_hat, average='weighted'))
-            model_df['Model'].append(str(clf))
-        pd.DataFrame(model_df).to_csv(
-            os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
-    clf_results = {f"Experiment": experiment_name}
-    results_df = pd.read_csv(os.path.join('results', str(experiment_name), f'{experiment_name}_evaluating.csv'))
-    clf_names = ['LDA', 'DTC', 'RFC', 'MLP']
-    for i, row in results_df.iterrows():
-        clf_name = clf_names[i]
-        if binary:
-            clf_results.update({
-                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f}",
-                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f}",
-                f"{clf_name} AUC": f"{row['AUC'] * 100:.2f}",
-                f"{clf_name} AP": f"{row['AP'] * 100:.2f}",
-                f"{clf_name} AUPRC": f"{row['AUPRC'] * 100:.2f}",
-                f"{clf_name} EER": f"{row['EER'] * 100:.2f}",
-                f"{clf_name} Kappa": f"{row['Kappa']:.4f}",
-                f"{clf_name} TPR@10%FPR": f"{row['TPR@1%FPR'] * 100:.2f}",
-                f"{clf_name} TPR@5%FPR": f"{row['TPR@5%FPR'] * 100:.2f}",
-            })
-        else:
-            clf_results.update({
-                f"{clf_name} Accuracy": f"{row['Accuracy'] * 100:.2f}",
-                f"{clf_name} F1 Score": f"{row['F1 Score'] * 100:.2f}",
-                f"{clf_name} mAUC": f"{row['mAUC'] * 100:.2f}",
-                f"{clf_name} mAP": f"{row['mAP'] * 100:.2f}",
-                f"{clf_name} mAUPRC": f"{row['mAUPRC'] * 100:.2f}",
-                f"{clf_name} mEER": f"{row['mEER'] * 100:.2f}",
-                f"{clf_name} Kappa": f"{row['Kappa']:.4f}",
-                f"{clf_name} mTPR@10%FPR": f"{row['mTPR@1%FPR'] * 100:.2f}",
-                f"{clf_name} mTPR@5%FPR": f"{row['mTPR@5%FPR'] * 100:.2f}",
-            })
-    for clf in clfs:
-        features_df = pd.read_csv(os.path.join('results', str(experiment_name),
-                                               f'{str(clf.named_steps["clf"])[0:5]}_{experiment_name}_fi.csv'))
-        features_df.describe().to_csv(os.path.join('results', str(experiment_name),
-                                                   f'{str(clf.named_steps["clf"])[0:5]}_{experiment_name}_fi_explain.csv'))
-        features_describe = pd.read_csv(
-            os.path.join('results', str(experiment_name),
-                         f'{str(clf.named_steps["clf"])[0:5]}_{experiment_name}_fi_explain.csv'))
-        top_10 = features_describe.set_index('Unnamed: 0').transpose().nlargest(10, 'mean')
-        top_10_names = list(top_10.index)
-        top_10_values = [f"{mean:.4f} \u00B1 {std:.4f}" for mean, std in zip(top_10['mean'], top_10['std'])]
-        bot_10 = features_describe.set_index('Unnamed: 0').transpose().nsmallest(10, 'mean')
-        bot_10_names = list(bot_10.index)
-        bot_10_values = [f"{mean:.4f} \u00B1 {std:.4f}" for mean, std in zip(bot_10['mean'], bot_10['std'])]
-        features_describe = []
-        features_describe.extend(top_10_names)
-        features_describe.extend(bot_10_names)
-        features_describe.append(f"{experiment_name} {str(clf.named_steps['clf'])[0:5]}")
-        features_values = []
-        features_values.extend(top_10_values)
-        features_values.extend(bot_10_values)
-        mda_features.append(features_describe)
-        mda_features.append(features_values)
-    return report_df.append(clf_results, ignore_index=True)
-
-
 def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name, report_df, mda_features,
                        features=None,
                        binary=True, folds=10):
+    if not os.path.exists(os.path.join('results', str(experiment_name))):
+        os.mkdir(os.path.join('results', str(experiment_name)))
     rng = np.random.RandomState(0)
     if features is None:
         classifiers = [
@@ -381,7 +241,6 @@ def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name
             KNeighborsClassifier(9, n_jobs=-1),
             DecisionTreeClassifier(min_samples_split=20, random_state=rng),
             RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
-            # MLPClassifier(max_iter=1000)
         ]
     else:
         classifiers = [
@@ -389,183 +248,177 @@ def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name
             KNeighborsClassifier(9, n_jobs=-1),
             DecisionTreeClassifier(min_samples_split=20, random_state=rng),
             RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
-            # MLPClassifier(max_iter=1000)
         ]
-    if not os.path.exists(os.path.join('results', str(experiment_name))):
-        datasets = clacir.generate_dataset(datastreams=datastreams,
-                                           panas_threshold=panas_threshold)[experiment]
-        get_dataset_stats(datasets, experiment_name)
+    datasets = clacir.generate_dataset(datastreams=datastreams,
+                                       panas_threshold=panas_threshold)[experiment]
+    get_dataset_stats(datasets, experiment_name)
 
-        os.mkdir(os.path.join('results', str(experiment_name)))
-        groups = []
-        for i in range(0, len(datasets[0])):
-            group = np.ndarray(len(datasets[0][i]))
-            group[:] = i
-            groups.extend(group)
-        x = np.vstack(datasets[0])
-        y = np.vstack(datasets[1]).ravel()
-        groups = np.array(groups)
+    os.mkdir(os.path.join('results', str(experiment_name)))
+    groups = []
+    for i in range(0, len(datasets[0])):
+        group = np.ndarray(len(datasets[0][i]))
+        group[:] = i
+        groups.extend(group)
+    x = np.vstack(datasets[0])
+    y = np.vstack(datasets[1]).ravel()
+    groups = np.array(groups)
 
-        best_models = []
-        for clf in classifiers:
-            fold = 1
-            feature_importance_df = dict()
-            # k_fold = GroupKFold(n_splits=folds)
-            k_fold = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=1)
-            # k_fold = StratifiedKFold(n_splits=folds, shuffle=True, random_state=rng)
+    best_models = []
+    for clf in classifiers:
+        fold = 1
+        feature_importance_df = dict()
+        # k_fold = GroupKFold(n_splits=folds)
+        k_fold = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=1)
+        # k_fold = StratifiedKFold(n_splits=folds, shuffle=True, random_state=rng)
+        if binary:
+            k_fold_df = dict((sub, []) for sub in
+                             ['F1 Score', 'BAccuracy', 'Accuracy', 'Class',
+                              'Test Baseline Class 0', 'Test Baseline Class 1',
+                              'Train Baseline Class 0', 'Train Baseline Class 1',
+                              'Train Identities Class 0', 'Train Identities Class 1',
+                              'Test Identities Class 0', 'Test Identities Class 1',
+                              'AUC',
+                              'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR',
+                              'TPR@5%FPR',
+                              'EER',
+                              'Fitted Models', 'Test IX'])
+        else:
+            k_fold_df = dict(
+                (sub, []) for sub in
+                ['F1 Score',
+                 'BAccuracy',
+                 'Accuracy',
+                 '0 AUC',
+                 '0 AP',
+                 '0 EER',
+                 '0 TPR@1%FPR',
+                 '0 TPR@5%FPR',
+                 '0 AUPRC',
+
+                 '1 AUC',
+                 '1 AP',
+                 '1 EER',
+                 '1 TPR@1%FPR',
+                 '1 TPR@5%FPR',
+                 '1 AUPRC',
+
+                 '2 AUC',
+                 '2 AP',
+                 '2 EER',
+                 '2 TPR@1%FPR',
+                 '2 TPR@5%FPR',
+                 '2 AUPRC',
+
+                 'Kappa',
+                 'Fitted Models', 'Test IX'])
+        best_models_roc = []
+
+        print(f"Testing {str(clf)} on {experiment_name}")
+        pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('clf', clf)])
+        # pipeline = clf
+        for train_ix, test_ix in k_fold.split(x, y, groups=groups):
+            # for train_ix, test_ix in k_fold.split(x, y):
+            print(f"\tRunning fold {fold} of {folds}")
+
+            train_ix = shuffle(train_ix)
+
+            train_x, x_test = x[train_ix], x[test_ix]
+            train_y, y_test = y[train_ix], y[test_ix]
+            train_group, test_group = groups[train_ix], groups[test_ix]
+
+            model = pipeline.fit(train_x, train_y)
+
+            y_hat_probs = model.predict_proba(x_test)
+            y_hat = np.argmax(y_hat_probs, axis=1)
+            best_models_roc.append((y_hat_probs, y_test))
+            y_val = y_test
+            k_fold_df['BAccuracy'].append(balanced_accuracy_score(y_val, y_hat))
+
+            if features is not None:
+                if "LinearDiscriminantAnalysis" in str(clf) or "RandomForestClassifier" in str(clf) or "DecisionTreeClassifier" in str(clf):
+                    x_test_fi = copy.deepcopy(x_test)
+                    y_test_fi = copy.deepcopy(y_test)
+                    scores = get_feature_importance(model, x_test_fi, y_test_fi, feature_importance_df,
+                                           features)
+                    feature_importance_df = {k: [v] for k, v in feature_importance_df.items()}
+                    features_df = pd.DataFrame(feature_importance_df)
+                    features_df.to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_fi.csv'))
+                    scores.to_excel(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_permute.xlsx'))
+                    plt.plot(scores[0].values)
+                    plt.ylabel("Balanced Accuracy (\%)")
+                    plt.xlabel("Columns Randomized")
+                    plt.title(f"Column Randomization on Fold {fold}")
+                    plt.savefig(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_permute.png'), dpi=500)
+                    plt.clf()
+            k_fold_df['Accuracy'].append(accuracy_score(y_val, y_hat))
+            k_fold_df['Kappa'].append(cohen_kappa_score(y_val, y_hat))
+            k_fold_df['F1 Score'].append(f1_score(y_val, y_hat, average='weighted'))
+            k_fold_df['Test IX'].append(np.unique(groups[test_ix]))
+            k_fold_df['Class'].append(np.unique(y_val))
+
+            k_fold_df['Train Baseline Class 1'].append(len(np.where(train_y == 1)[0]) / len(train_y))
+            k_fold_df['Train Baseline Class 0'].append(len(np.where(train_y == 0)[0]) / len(train_y))
+            k_fold_df['Test Baseline Class 1'].append(len(np.where(y_test == 1)[0]) / len(y_test))
+            k_fold_df['Test Baseline Class 0'].append(len(np.where(y_test == 0)[0]) / len(y_test))
+            k_fold_df['Train Identities Class 1'].append(len(np.unique(train_group[np.where(train_y == 1)])))
+            k_fold_df['Train Identities Class 0'].append(len(np.unique(train_group[np.where(train_y == 0)])))
+            k_fold_df['Test Identities Class 1'].append(len(np.unique(test_group[np.where(y_test == 1)])))
+            k_fold_df['Test Identities Class 0'].append(len(np.unique(test_group[np.where(y_test == 0)])))
+
             if binary:
-                k_fold_df = dict((sub, []) for sub in
-                                 ['F1 Score', 'BAccuracy', 'Accuracy', 'Class',
-                                  'Test Baseline Class 0', 'Test Baseline Class 1',
-                                  'Train Baseline Class 0', 'Train Baseline Class 1',
-                                  'Train Identities Class 0', 'Train Identities Class 1',
-                                  'Test Identities Class 0', 'Test Identities Class 1',
-                                  'AUC',
-                                  'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR',
-                                  'TPR@5%FPR',
-                                  'EER',
-                                  'Fitted Models', 'Test IX'])
+                k_fold_df['AP'].append(average_precision_score(y_val, y_hat_probs[:, 1], average='weighted'))
+                try:
+                    k_fold_df['AUC'].append(roc_auc_score(y_val, y_hat_probs[:, 1], average='weighted'))
+                except ValueError:
+                    k_fold_df['AUC'].append(0)
+                k_fold_df['EER'].append(calculate_eer(y_val, y_hat_probs[:, 1]))
+                k_fold_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_val, y_hat_probs[:, 1]))
+                k_fold_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_val, y_hat_probs[:, 1]))
+                k_fold_df['AUPRC'].append(calculate_auprc(y_val, y_hat_probs[:, 1]))
             else:
-                k_fold_df = dict(
-                    (sub, []) for sub in
-                    ['F1 Score',
-                     'BAccuracy',
-                     'Accuracy',
-                     '0 AUC',
-                     '0 AP',
-                     '0 EER',
-                     '0 TPR@1%FPR',
-                     '0 TPR@5%FPR',
-                     '0 AUPRC',
+                y_score = label_binarize(y_val, classes=[0, 1, 2])
+                for i in range(3):
+                    tpr_1_per = calculate_tpr_10_per(y_score[:, i], y_hat_probs[:, i])
+                    tpr_5_per = calculate_tpr_5_per(y_score[:, i], y_hat_probs[:, i])
+                    eer = calculate_eer(y_score[:, i], y_hat_probs[:, i])
+                    mean_average_precision = average_precision_score(y_score[:, i], y_hat_probs[:, i],
+                                                                     average='weighted')
+                    roc_auc = roc_auc_score(y_score[:, i], y_hat_probs[:, i], average='weighted')
+                    pr_auc = calculate_auprc(y_score[:, i], y_hat_probs[:, i])
+                    k_fold_df[str(i) + ' AP'].append(float(mean_average_precision))
+                    k_fold_df[str(i) + ' EER'].append(float(eer))
+                    k_fold_df[str(i) + ' TPR@1%FPR'].append(float(tpr_1_per))
+                    k_fold_df[str(i) + ' TPR@5%FPR'].append(float(tpr_5_per))
+                    k_fold_df[str(i) + ' AUC'].append(float(roc_auc))
+                    k_fold_df[str(i) + ' AUPRC'].append(float(pr_auc))
 
-                     '1 AUC',
-                     '1 AP',
-                     '1 EER',
-                     '1 TPR@1%FPR',
-                     '1 TPR@5%FPR',
-                     '1 AUPRC',
+            k_fold_df['Fitted Models'].append(model)
+            fold += 1
+        if binary:
+            best_model = np.argmax(k_fold_df['Kappa'])
+            best_models.append(k_fold_df['Fitted Models'][best_model])
+            fi_ix = k_fold_df['Test IX'][best_model]
+            best_model_roc = best_models_roc[best_model]
+            with open(os.path.join('results', str(experiment_name), f"{str(clf)[0:5]}_best_predictions.pkl"),
+                      'wb') as f:
+                pickle.dump(best_model_roc, f)
+        else:
+            best_model = np.argmax(k_fold_df['Kappa'])
+            best_models.append(k_fold_df['Fitted Models'][best_model])
+            fi_ix = k_fold_df['Test IX'][best_model]
+            best_model_roc = best_models_roc[best_model]
+            with open(os.path.join('results', str(experiment_name), f"{str(clf)[0:5]}_best_predictions.pkl"),
+                      'wb') as f:
+                pickle.dump(best_model_roc, f)
+        get_classification_table(y, np.argmax(best_models[-1].predict_proba(x), axis=1)).to_csv(
+            os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_class_table.csv'))
+        pd.DataFrame(confusion_matrix(y, np.argmax(best_models[-1].predict_proba(x), axis=1))).to_csv(
+            os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_conf_mat.csv'))
+        pd.DataFrame(k_fold_df).to_csv(
+            os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
 
-                     '2 AUC',
-                     '2 AP',
-                     '2 EER',
-                     '2 TPR@1%FPR',
-                     '2 TPR@5%FPR',
-                     '2 AUPRC',
-
-                     'Kappa',
-                     'Fitted Models', 'Test IX'])
-            best_models_roc = []
-
-            print(f"Testing {str(clf)} on {experiment_name}")
-            pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('clf', clf)])
-            # pipeline = clf
-            for train_ix, test_ix in k_fold.split(x, y, groups=groups):
-                # for train_ix, test_ix in k_fold.split(x, y):
-                print(f"\tRunning fold {fold} of {folds}")
-
-                train_ix = shuffle(train_ix)
-
-                train_x, x_test = x[train_ix], x[test_ix]
-                train_y, y_test = y[train_ix], y[test_ix]
-                train_group, test_group = groups[train_ix], groups[test_ix]
-
-                model = pipeline.fit(train_x, train_y)
-
-                y_hat_probs = model.predict_proba(x_test)
-                y_hat = np.argmax(y_hat_probs, axis=1)
-                best_models_roc.append((y_hat_probs, y_test))
-                y_val = y_test
-                k_fold_df['BAccuracy'].append(balanced_accuracy_score(y_val, y_hat))
-
-                if features is not None:
-                    if "LinearDiscriminantAnalysis" in str(clf) or "RandomForestClassifier" in str(clf) or "DecisionTreeClassifier" in str(clf):
-                        x_test_fi = copy.deepcopy(x_test)
-                        y_test_fi = copy.deepcopy(y_test)
-                        scores = get_feature_importance(model, x_test_fi, y_test_fi, feature_importance_df,
-                                               features)
-                        feature_importance_df = {k: [v] for k, v in feature_importance_df.items()}
-                        features_df = pd.DataFrame(feature_importance_df)
-                        features_df.to_csv(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_fi.csv'))
-                        scores.to_excel(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_permute.xlsx'))
-                        plt.plot(scores[0].values)
-                        plt.ylabel("Balanced Accuracy (\%)")
-                        plt.xlabel("Columns Randomized")
-                        plt.title(f"Column Randomization on Fold {fold}")
-                        plt.savefig(os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_{fold}_permute.png'), dpi=500)
-                        plt.clf()
-                k_fold_df['Accuracy'].append(accuracy_score(y_val, y_hat))
-                k_fold_df['Kappa'].append(cohen_kappa_score(y_val, y_hat))
-                k_fold_df['F1 Score'].append(f1_score(y_val, y_hat, average='weighted'))
-                k_fold_df['Test IX'].append(np.unique(groups[test_ix]))
-                k_fold_df['Class'].append(np.unique(y_val))
-
-                k_fold_df['Train Baseline Class 1'].append(len(np.where(train_y == 1)[0]) / len(train_y))
-                k_fold_df['Train Baseline Class 0'].append(len(np.where(train_y == 0)[0]) / len(train_y))
-                k_fold_df['Test Baseline Class 1'].append(len(np.where(y_test == 1)[0]) / len(y_test))
-                k_fold_df['Test Baseline Class 0'].append(len(np.where(y_test == 0)[0]) / len(y_test))
-                k_fold_df['Train Identities Class 1'].append(len(np.unique(train_group[np.where(train_y == 1)])))
-                k_fold_df['Train Identities Class 0'].append(len(np.unique(train_group[np.where(train_y == 0)])))
-                k_fold_df['Test Identities Class 1'].append(len(np.unique(test_group[np.where(y_test == 1)])))
-                k_fold_df['Test Identities Class 0'].append(len(np.unique(test_group[np.where(y_test == 0)])))
-
-                if binary:
-                    k_fold_df['AP'].append(average_precision_score(y_val, y_hat_probs[:, 1], average='weighted'))
-                    try:
-                        k_fold_df['AUC'].append(roc_auc_score(y_val, y_hat_probs[:, 1], average='weighted'))
-                    except ValueError:
-                        k_fold_df['AUC'].append(0)
-                    k_fold_df['EER'].append(calculate_eer(y_val, y_hat_probs[:, 1]))
-                    k_fold_df['TPR@1%FPR'].append(calculate_tpr_10_per(y_val, y_hat_probs[:, 1]))
-                    k_fold_df['TPR@5%FPR'].append(calculate_tpr_5_per(y_val, y_hat_probs[:, 1]))
-                    k_fold_df['AUPRC'].append(calculate_auprc(y_val, y_hat_probs[:, 1]))
-                else:
-                    y_score = label_binarize(y_val, classes=[0, 1, 2])
-                    for i in range(3):
-                        tpr_1_per = calculate_tpr_10_per(y_score[:, i], y_hat_probs[:, i])
-                        tpr_5_per = calculate_tpr_5_per(y_score[:, i], y_hat_probs[:, i])
-                        eer = calculate_eer(y_score[:, i], y_hat_probs[:, i])
-                        mean_average_precision = average_precision_score(y_score[:, i], y_hat_probs[:, i],
-                                                                         average='weighted')
-                        roc_auc = roc_auc_score(y_score[:, i], y_hat_probs[:, i], average='weighted')
-                        pr_auc = calculate_auprc(y_score[:, i], y_hat_probs[:, i])
-                        k_fold_df[str(i) + ' AP'].append(float(mean_average_precision))
-                        k_fold_df[str(i) + ' EER'].append(float(eer))
-                        k_fold_df[str(i) + ' TPR@1%FPR'].append(float(tpr_1_per))
-                        k_fold_df[str(i) + ' TPR@5%FPR'].append(float(tpr_5_per))
-                        k_fold_df[str(i) + ' AUC'].append(float(roc_auc))
-                        k_fold_df[str(i) + ' AUPRC'].append(float(pr_auc))
-
-                k_fold_df['Fitted Models'].append(model)
-                fold += 1
-            if binary:
-                best_model = np.argmax(k_fold_df['Kappa'])
-                best_models.append(k_fold_df['Fitted Models'][best_model])
-                fi_ix = k_fold_df['Test IX'][best_model]
-                best_model_roc = best_models_roc[best_model]
-                with open(os.path.join('results', str(experiment_name), f"{str(clf)[0:5]}_best_predictions.pkl"),
-                          'wb') as f:
-                    pickle.dump(best_model_roc, f)
-            else:
-                best_model = np.argmax(k_fold_df['Kappa'])
-                best_models.append(k_fold_df['Fitted Models'][best_model])
-                fi_ix = k_fold_df['Test IX'][best_model]
-                best_model_roc = best_models_roc[best_model]
-                with open(os.path.join('results', str(experiment_name), f"{str(clf)[0:5]}_best_predictions.pkl"),
-                          'wb') as f:
-                    pickle.dump(best_model_roc, f)
-            get_classification_table(y, np.argmax(best_models[-1].predict_proba(x), axis=1)).to_csv(
-                os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_class_table.csv'))
-            pd.DataFrame(confusion_matrix(y, np.argmax(best_models[-1].predict_proba(x), axis=1))).to_csv(
-                os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_best_conf_mat.csv'))
-            pd.DataFrame(k_fold_df).to_csv(
-                os.path.join('results', str(experiment_name), f'{str(clf)[0:5]}_training.csv'))
-
-        with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'wb') as f:
-            pickle.dump(best_models, f)
-    else:
-        print(f"Experiment with name {experiment_name} already exists, loading data...")
-    # with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'rb') as f:
-    #     best_models = pickle.load(f)
+    with open(os.path.join('results', str(experiment_name), f'{experiment_name}_models.pkl'), 'wb') as f:
+        pickle.dump(best_models, f)
     clf_results = {f"Experiment": experiment_name}
     for clf in classifiers:
         if "LinearDiscriminantAnalysis" in str(clf) or "RandomForestClassifier" in str(
@@ -637,129 +490,6 @@ def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name
             })
         report_df = pd.concat([report_df, pd.DataFrame([clf_results])], ignore_index=True)
     return report_df, None
-
-
-def train_fresh_models_batch_test(datastreams, panas_threshold, experiment, experiment_name, report_df, mda_features,
-                                  features=None,
-                                  binary=True, folds=10):
-    rng = np.random.RandomState(0)
-    if features is None:
-        classifiers = [
-            LinearDiscriminantAnalysis(solver='lsqr'),
-            KNeighborsClassifier(9, n_jobs=-1),
-            DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-            RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
-            # MLPClassifier(max_iter=1000)
-        ]
-    else:
-        classifiers = [
-            LinearDiscriminantAnalysis(solver='lsqr'),
-            DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-            RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
-            # MLPClassifier(max_iter=1000)
-        ]
-    if not os.path.exists(os.path.join('results', str(experiment_name))):
-        datasets = clacir.generate_dataset(datastreams=datastreams,
-                                           panas_threshold=panas_threshold)[experiment]
-        get_dataset_stats(datasets, experiment_name)
-
-        os.mkdir(os.path.join('results', str(experiment_name)))
-        groups = []
-        for i in range(0, len(datasets[0])):
-            group = np.ndarray(len(datasets[0][i]))
-            group[:] = i
-            groups.extend(group)
-        x = np.vstack(datasets[0])
-        y = np.vstack(datasets[1]).ravel()
-        groups = np.array(groups)
-
-        best_models = []
-        for clf in classifiers:
-            fold = 1
-            feature_importance_df = dict()
-            # k_fold = GroupKFold(n_splits=folds)
-            k_fold = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=1)
-            # k_fold = StratifiedKFold(n_splits=folds, shuffle=True, random_state=rng)
-            if binary:
-                k_fold_df = dict((sub, []) for sub in
-                                 ['F1 Score', 'BAccuracy', 'Accuracy', 'Class',
-                                  'Test Baseline Class 0', 'Test Baseline Class 1',
-                                  'Train Baseline Class 0', 'Train Baseline Class 1',
-                                  'Train Identities Class 0', 'Train Identities Class 1',
-                                  'Test Identities Class 0', 'Test Identities Class 1',
-                                  'AUC',
-                                  'AP', 'AUPRC', 'Kappa', 'TPR@1%FPR',
-                                  'TPR@5%FPR',
-                                  'EER',
-                                  'Fitted Models', 'Test IX'])
-            else:
-                k_fold_df = dict(
-                    (sub, []) for sub in
-                    ['F1 Score',
-                     'BAccuracy',
-                     'Accuracy',
-                     '0 AUC',
-                     '0 AP',
-                     '0 EER',
-                     '0 TPR@1%FPR',
-                     '0 TPR@5%FPR',
-                     '0 AUPRC',
-
-                     '1 AUC',
-                     '1 AP',
-                     '1 EER',
-                     '1 TPR@1%FPR',
-                     '1 TPR@5%FPR',
-                     '1 AUPRC',
-
-                     '2 AUC',
-                     '2 AP',
-                     '2 EER',
-                     '2 TPR@1%FPR',
-                     '2 TPR@5%FPR',
-                     '2 AUPRC',
-
-                     'Kappa',
-                     'Fitted Models', 'Test IX'])
-            best_models_roc = []
-            print(f"Testing {str(clf)} on {experiment_name}")
-            pipeline = Pipeline(steps=[('scaler', StandardScaler()), ('clf', clf)])
-            # pipeline = clf
-            groups_balanced_acc = []
-            group_numbers = []
-            for train_ix, test_ix in k_fold.split(x, y, groups=groups):
-                # for train_ix, test_ix in k_fold.split(x, y):
-                print(f"\tRunning fold {fold} of {folds}")
-
-                train_ix = shuffle(train_ix)
-
-                train_x, x_test = x[train_ix], x[test_ix]
-                train_y, y_test = y[train_ix], y[test_ix]
-                train_group, test_group = groups[train_ix], groups[test_ix]
-
-                model = pipeline.fit(train_x, train_y)
-                y_hat_probs = model.predict_proba(x_test)
-                y_hat = np.argmax(y_hat_probs, axis=1)
-                best_models_roc.append((y_hat_probs, y_test))
-                y_val = y_test
-
-                # Find indices for each group
-                current_group_number = np.unique(test_group)
-                group_numbers.extend(current_group_number)
-                test_samples = 100
-                for group_number in current_group_number:
-                    group = [i for i in range(len(test_group)) if test_group[i] > group_number]
-                    postcondition_data = [i for i in range(len(y_val[group])) if (y_val[group])[i] == 0]
-                    # Iterate through and calculate balanced accuracy for batched data (100 samples?)
-                    group_balanced_acc = []
-                    for val, hat in zip(clacir.split_set(y_val[postcondition_data], test_samples, test_samples),
-                                        clacir.split_set(y_hat[postcondition_data], test_samples, test_samples)):
-                        group_balanced_acc.append(balanced_accuracy_score(val, hat))
-                    groups_balanced_acc.append(group_balanced_acc)
-
-                fold += 1
-            df = pd.DataFrame(groups_balanced_acc, group_numbers)
-            df.to_excel(os.path.join("results", experiment_name, str(clf)[0:5] + str(fold) + ".xlsx"))
 
 
 def generate_figures(exp_df, plot_savepath, plot_name):
@@ -842,117 +572,56 @@ if __name__ == '__main__':
     top_features = []
     top_training_features = {k: [] for k in feature_names}
 
-    # for panas in np.arange(-1, 1.1, 0.1):
-    #     # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
-    #     int_train_all_data, _ = train_fresh_models(all_data, panas, 1, f'Int All Data {panas:.1f}',
-    #                                                int_train_all_data,
-    #                                                top_training_features,
-    #                                                feature_names,
-    #                                                folds=folds)
-    #     int_train_remove_acc, _ = train_fresh_models(all_data_remove_acc, panas, 1,
-    #                                                  f'Int Task Remove ACC {panas:.1f}',
-    #                                                  int_train_remove_acc,
-    #                                                  top_training_features,
-    #                                                  feature_names_no_acc,
-    #                                                  folds=folds)
-    # int_train_all_data.to_excel(os.path.join('results', 'Int All Data.xlsx'))
-    # int_train_remove_acc.to_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
-
-    # if os.path.exists(os.path.join('results', 'Int All Data.xlsx')):
-    #     int_train_all_data = pd.read_excel(os.path.join('results', 'Int All Data.xlsx'))
-    #     int_train_remove_acc = pd.read_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
-    #     int_train_eda = pd.read_excel(os.path.join('results', 'Int EDA.xlsx'))
-    #     int_train_hrv = pd.read_excel(os.path.join('results', 'Int HRV.xlsx'))
-    #     int_train_acc = pd.read_excel(os.path.join('results', 'Int ACC.xlsx'))
-    #     int_train_bvp = pd.read_excel(os.path.join('results', 'Int BVP.xlsx'))
-    #     ap_train_all_data = pd.read_excel(os.path.join('results', 'AP All Data.xlsx'))
-    #     ap_train_remove_acc = pd.read_excel(os.path.join('results', 'AP Remove ACC.xlsx'))
-    #     ap_train_eda = pd.read_excel(os.path.join('results', 'AP EDA.xlsx'))
-    #     ap_train_hrv = pd.read_excel(os.path.join('results', 'AP HRV.xlsx'))
-    #     ap_train_acc = pd.read_excel(os.path.join('results', 'AP ACC.xlsx'))
-    #     ap_train_bvp = pd.read_excel(os.path.join('results', 'AP BVP.xlsx'))
-    # else:
     for panas in np.arange(-1, 1.1, 0.1):
         # Perform classic benchmarking with SciKit Learn built in models on no accelerometer datasets
-        # ap_train_all_data, _ = train_fresh_models(all_data, panas, 0, f'AP All Data {panas:.1f}', ap_train_all_data,
-        #                                           top_training_features,
-        #                                           None, folds=folds)
         int_train_all_data, _ = train_fresh_models(all_data, panas, 1, f'Int All Data {panas:.1f}',
                                                    int_train_all_data,
                                                    top_training_features,
                                                    feature_names, folds=folds)
-
-        # ap_train_remove_acc, _ = train_fresh_models(all_data_remove_acc, panas, 0,
-        #                                             f'AP Task Remove ACC {panas:.1f}',
-        #                                             ap_train_remove_acc,
-        #                                             top_training_features,
-        #                                             None, folds=folds)
+    for panas in np.arange(-1, 1.1, 0.1):
         int_train_remove_acc, _ = train_fresh_models(all_data_remove_acc, panas, 1,
                                                      f'Int Task Remove ACC {panas:.1f}',
                                                      int_train_remove_acc,
                                                      top_training_features,
                                                      feature_names_no_acc, folds=folds)
-
-        # ap_train_eda, _ = train_fresh_models(eda_only, panas, 0,
-        #                                      f'AP Task EDA {panas:.1f}',
-        #                                      ap_train_eda,
-        #                                      top_training_features,
-        #                                      None, folds=folds)
+    for panas in np.arange(-1, 1.1, 0.1):
         int_train_eda, _ = train_fresh_models(eda_only, panas, 0,
                                               f'Int Task EDA {panas:.1f}',
                                               int_train_eda,
                                               top_training_features,
                                               None, folds=folds)
-
-        # ap_train_hrv, _ = train_fresh_models(hrv_only, panas, 0,
-        #                                      f'AP Task HRV {panas:.1f}',
-        #                                      ap_train_hrv,
-        #                                      top_training_features,
-        #                                      None, folds=folds)
+    for panas in np.arange(-1, 1.1, 0.1):
         int_train_hrv, _ = train_fresh_models(hrv_only, panas, 1,
                                               f'Int Task HRV {panas:.1f}',
                                               int_train_hrv,
                                               top_training_features,
                                               None, folds=folds)
-
-        # ap_train_acc, _ = train_fresh_models(acc_only, panas, 0,
-        #                                      f'AP Task ACC {panas:.1f}',
-        #                                      ap_train_acc,
-        #                                      top_training_features,
-        #                                      None, folds=folds)
+    for panas in np.arange(-1, 1.1, 0.1):
         int_train_acc, _ = train_fresh_models(acc_only, panas, 1,
                                               f'Int Task ACC {panas:.1f}',
                                               int_train_acc,
                                               top_training_features,
                                               None, folds=folds)
-
-        # ap_train_bvp, _ = train_fresh_models(bvp_only, panas, 0,
-        #                                      f'AP Task BVP {panas:.1f}',
-        #                                      ap_train_bvp,
-        #                                      top_training_features,
-        #                                      None, folds=folds)
+    for panas in np.arange(-1, 1.1, 0.1):
         int_train_bvp, _ = train_fresh_models(bvp_only, panas, 1,
                                               f'Int Task BVP {panas:.1f}',
                                               int_train_bvp,
                                               top_training_features,
                                               None, folds=folds)
 
-        # Prepare and save results
-        int_train_all_data.to_excel(os.path.join('results', 'Int All Data.xlsx'))
-        int_train_remove_acc.to_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
-        int_train_eda.to_excel(os.path.join('results', 'Int EDA.xlsx'))
-        int_train_hrv.to_excel(os.path.join('results', 'Int HRV.xlsx'))
-        int_train_acc.to_excel(os.path.join('results', 'Int ACC.xlsx'))
-        int_train_bvp.to_excel(os.path.join('results', 'Int BVP.xlsx'))
-        ap_train_all_data.to_excel(os.path.join('results', 'AP All Data.xlsx'))
-        ap_train_remove_acc.to_excel(os.path.join('results', 'AP Remove ACC.xlsx'))
-        ap_train_eda.to_excel(os.path.join('results', 'AP EDA.xlsx'))
-        ap_train_hrv.to_excel(os.path.join('results', 'AP HRV.xlsx'))
-        ap_train_acc.to_excel(os.path.join('results', 'AP ACC.xlsx'))
-        ap_train_bvp.to_excel(os.path.join('results', 'AP BVP.xlsx'))
-
-        pd.DataFrame(top_features).to_excel(os.path.join('results', 'Top Evaluation Features.xlsx'))
-        pd.DataFrame(top_training_features).to_excel(os.path.join('results', 'Top Training Features.xlsx'))
+    # Prepare and save results
+    int_train_all_data.to_excel(os.path.join('results', 'Int All Data.xlsx'))
+    int_train_remove_acc.to_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
+    int_train_eda.to_excel(os.path.join('results', 'Int EDA.xlsx'))
+    int_train_hrv.to_excel(os.path.join('results', 'Int HRV.xlsx'))
+    int_train_acc.to_excel(os.path.join('results', 'Int ACC.xlsx'))
+    int_train_bvp.to_excel(os.path.join('results', 'Int BVP.xlsx'))
+    ap_train_all_data.to_excel(os.path.join('results', 'AP All Data.xlsx'))
+    ap_train_remove_acc.to_excel(os.path.join('results', 'AP Remove ACC.xlsx'))
+    ap_train_eda.to_excel(os.path.join('results', 'AP EDA.xlsx'))
+    ap_train_hrv.to_excel(os.path.join('results', 'AP HRV.xlsx'))
+    ap_train_acc.to_excel(os.path.join('results', 'AP ACC.xlsx'))
+    ap_train_bvp.to_excel(os.path.join('results', 'AP BVP.xlsx'))
 
     generate_figures(int_train_all_data, os.path.join('results', 'Int All Data.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, All Data")
@@ -966,23 +635,10 @@ if __name__ == '__main__':
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only ACC")
     generate_figures(int_train_bvp, os.path.join('results', 'Int BVP.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only BVP")
-    # generate_figures(ap_train_all_data, os.path.join('results', 'AP All Data.png'),
-    #                  "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, All Data")
-    # generate_figures(ap_train_remove_acc, os.path.join('results', 'AP Remove ACC.png'),
-    #                  "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, All Data Minus ACC")
-    # generate_figures(ap_train_eda, os.path.join('results', 'AP EDA.png'),
-    #                  "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only EDA")
-    # generate_figures(ap_train_hrv, os.path.join('results', 'AP HRV.png'),
-    #                  "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only HRV")
-    # generate_figures(ap_train_acc, os.path.join('results', 'AP ACC.png'),
-    #                  "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only ACC")
-    # generate_figures(ap_train_bvp, os.path.join('results', 'AP BVP.png'),
-    #                  "Metric Variance with Tuned PANAS Threshold on Postcondition Classification, Only BVP")
 
     # Record script time
     seconds = time.time() - start
     minutes = seconds / 60.0
     hours = minutes / 60.0
     days = hours / 24.0
-    print(
-        f"\n\nThis process completed in {int(days)}:{int(hours) % 24:02d}:{int(minutes) % 60:02d}:{int(seconds) % 60:02d}")
+    print(f"\n\nThis process completed in {int(days)}:{int(hours) % 24:02d}:{int(minutes) % 60:02d}:{int(seconds) % 60:02d}")
