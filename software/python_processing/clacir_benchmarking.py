@@ -1,26 +1,13 @@
 """
-cognitive Load and Canine Intervention recognition (cLACIr) Dataset Benchmarking
+clacir_benchmarking.py
+Cognitive Load and Canine Intervention Recognition (CLACIR) Dataset Testing
 
-    This script compares the baseline performance of cLACIr in comparison to the Wearable Stress and Affect Detection
-    (WESAD) and Continuously Annotated Signals of Emotion (CASE) datasets using a suite of models including linear
-    discriminators, neural networks, nearest neighbor heuristic, ensemble learning, and decision trees in both binary
-    and multiclass tasks.
-
-    These three datasets were then mixed together in various permutations to evaluate the affect on learning when the
-    different subjects, methodologies, and sensors were used simultaneously.  Finally, all three datasets are combined.
-
-    The reported measures are top-1 accuracy, F1 score, TPR @ 5% FPR, TPR @ 10% FPR, Equal Error Rate, Area Under the
-    Receiver Operating Characteristic Curve, Cohen's Kappa, and Area Under the Precision Recall Curve.  These metrics
-    are generated for each fold of a 10-fold, stratified, identity split, cross validation.  The metrics are reported
-    as the averages with standard deviation in a final output Excel spreadsheet for each classifier, separated by
-    binary versus multiclass.
-
-    Additionally, raw classification tables and a confusion matrix is generated for the best of the trained models in
-    the 10-fold split and permutation feature importance is performed for each fold and ten iterations are performed.
-
-    It takes approximately 48 hours to run this script from start to finish.  Once a folder has been created for the
-    classification task in the 'results' folder, the script assumes that task has been completed previously and will
-    skip it.
+    This scripts processes the raw CLACIR dataset, archived as [insert DOI], into a pickled dataset and then performs a
+    battery of tests that are reported in [insert reference].  These tests evaluate multiple machine learning
+    classifiers and how well they are able to learn to differentiate between the human animal interaction and control
+    intervention classes.  It also performs the plotting of the final figures, calculates the feature importance,
+    calculates the randomized column feature importance, generates mean plots, and saves everything into the local
+    directory for inspection.
 
 Author:     Walker Arce
 Version:    4

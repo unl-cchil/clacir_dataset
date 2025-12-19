@@ -1,3 +1,14 @@
+"""
+clacir_interfacing.py
+Cognitive Load and Canine Intervention Recognition (CLACIR) Dataset Utilities
+
+    This script provides the utility functions needed to perform the machine learning tests performed in the
+    clacir_benchmarking.py script.
+
+Author:     Walker Arce
+Version:    4
+Date:       19 December 2025
+"""
 import os
 import pickle
 import pandas as pd
