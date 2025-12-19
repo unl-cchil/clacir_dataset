@@ -314,7 +314,11 @@ def load_clacir_dataset(filepath):
 def generate_dataset(datastreams=None, dataset_name="clacir", panas_threshold=None):
     if datastreams is None:
         datastreams = [True, True, True, True, True]
-    print("Collecting cLACIr dataset...")
+    print("Collecting CLACIR dataset...")
+    if not os.path.exists('datasets'):
+        os.mkdir('datasets')
+    if not os.path.exists('datasets/clacir_processed'):
+        os.mkdir('datasets/clacir_processed')
     dataset_path = f'datasets/clacir_processed/{dataset_name}.pkl'
     if os.path.exists(dataset_path):
         print("Pickled cLACIr dataset exists...\n")
