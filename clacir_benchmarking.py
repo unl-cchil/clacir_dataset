@@ -141,17 +141,11 @@ def calculate_inverted_permutation_importance_array(model, x_test, y_test, featu
 
 
 def get_feature_importance(model, x_test, y_test, fi_df, features):
-    # if "RandomForestClassifier" in str(model):
-        # calculate_inverted_permutation_importance(model, x_test, y_test, features)
-        # calculate_permutation_importance(model, x_test, features)
     r = permutation_importance(model, x_test, y_test,
                                n_repeats=10,
                                random_state=0)
     for i in r.importances_mean.argsort()[::-1]:
         fi_df[features[i]] = f"{r.importances_mean[i]} +/- {r.importances_std[i]}"
-        # print(f"{features[i]}: "
-        #       f"{r.importances_mean[i]}"
-        #       f" +/- {r.importances_std[i]}")
     scores = calculate_inverted_permutation_importance_array(model, x_test, y_test, features)
     return scores
 
@@ -203,20 +197,12 @@ def train_fresh_models(datastreams, panas_threshold, experiment, experiment_name
     if not os.path.exists(os.path.join('results', str(experiment_name))):
         os.mkdir(os.path.join('results', str(experiment_name)))
     rng = np.random.RandomState(0)
-    if features is None:
-        classifiers = [
-            LinearDiscriminantAnalysis(solver='lsqr'),
-            KNeighborsClassifier(9, n_jobs=-1),
-            DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-            RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
-        ]
-    else:
-        classifiers = [
-            LinearDiscriminantAnalysis(solver='lsqr'),
-            KNeighborsClassifier(9, n_jobs=-1),
-            DecisionTreeClassifier(min_samples_split=20, random_state=rng),
-            RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
-        ]
+    classifiers = [
+        LinearDiscriminantAnalysis(solver='lsqr'),
+        KNeighborsClassifier(9, n_jobs=-1),
+        DecisionTreeClassifier(min_samples_split=20, random_state=rng),
+        RandomForestClassifier(min_samples_split=20, n_estimators=100, random_state=rng, n_jobs=-1),
+    ]
     datasets = clacir.generate_dataset(datastreams=datastreams,
                                        panas_threshold=panas_threshold)[experiment]
 
@@ -538,37 +524,43 @@ if __name__ == '__main__':
         int_train_all_data = train_fresh_models(all_data, panas, 1, f'Int All Data {panas:.1f}',
                                                 int_train_all_data,
                                                 top_training_features,
-                                                feature_names, folds=folds)
+                                                bvp_feature_names + eda_feature_names + acc_feature_names + hrv_feature_names,
+                                                folds=folds)
     for panas in np.arange(-1, 1.1, 0.1):
         int_train_remove_acc = train_fresh_models(all_data_remove_acc, panas, 1,
                                                   f'Int Task Remove ACC {panas:.1f}',
                                                   int_train_remove_acc,
                                                   top_training_features,
-                                                  feature_names_no_acc, folds=folds)
+                                                  bvp_feature_names + eda_feature_names + hrv_feature_names,
+                                                  folds=folds)
     for panas in np.arange(-1, 1.1, 0.1):
-        int_train_eda = train_fresh_models(eda_only, panas, 0,
+        int_train_eda = train_fresh_models(eda_only, panas, 1,
                                            f'Int Task EDA {panas:.1f}',
                                            int_train_eda,
                                            top_training_features,
-                                           None, folds=folds)
+                                           eda_feature_names,
+                                           folds=folds)
     for panas in np.arange(-1, 1.1, 0.1):
         int_train_hrv = train_fresh_models(hrv_only, panas, 1,
                                            f'Int Task HRV {panas:.1f}',
                                            int_train_hrv,
                                            top_training_features,
-                                           None, folds=folds)
+                                           hrv_feature_names,
+                                           folds=folds)
     for panas in np.arange(-1, 1.1, 0.1):
         int_train_acc = train_fresh_models(acc_only, panas, 1,
                                            f'Int Task ACC {panas:.1f}',
                                            int_train_acc,
                                            top_training_features,
-                                           None, folds=folds)
+                                           acc_feature_names,
+                                           folds=folds)
     for panas in np.arange(-1, 1.1, 0.1):
         int_train_bvp = train_fresh_models(bvp_only, panas, 1,
                                            f'Int Task BVP {panas:.1f}',
                                            int_train_bvp,
                                            top_training_features,
-                                           None, folds=folds)
+                                           bvp_feature_names,
+                                           folds=folds)
 
     # Prepare and save results
     int_train_all_data.to_excel(os.path.join('results', 'Int All Data.xlsx'))
@@ -578,17 +570,17 @@ if __name__ == '__main__':
     int_train_acc.to_excel(os.path.join('results', 'Int ACC.xlsx'))
     int_train_bvp.to_excel(os.path.join('results', 'Int BVP.xlsx'))
 
-    generate_figures(int_train_all_data, os.path.join('figures', 'Int All Data.png'),
+    generate_figures(int_train_all_data, os.path.join('figures', 'Int_All_Data.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, All Data")
-    generate_figures(int_train_remove_acc, os.path.join('figures', 'Int Remove ACC.png'),
+    generate_figures(int_train_remove_acc, os.path.join('figures', 'Int_Remove_ACC.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, All Data Minus ACC")
-    generate_figures(int_train_eda, os.path.join('figures', 'Int EDA.png'),
+    generate_figures(int_train_eda, os.path.join('figures', 'Int_EDA.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only EDA")
-    generate_figures(int_train_hrv, os.path.join('figures', 'Int HRV.png'),
+    generate_figures(int_train_hrv, os.path.join('figures', 'Int_HRV.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only HRV")
-    generate_figures(int_train_acc, os.path.join('figures', 'Int ACC.png'),
+    generate_figures(int_train_acc, os.path.join('figures', 'Int_ACC.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only ACC")
-    generate_figures(int_train_bvp, os.path.join('figures', 'Int BVP.png'),
+    generate_figures(int_train_bvp, os.path.join('figures', 'Int_BVP.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only BVP")
 
     # Record script time
