@@ -513,6 +513,7 @@ if __name__ == '__main__':
     int_train_hrv = pd.DataFrame()
     int_train_acc = pd.DataFrame()
     int_train_bvp = pd.DataFrame()
+    ap_train_all = pd.DataFrame()
 
     top_features = []
     top_training_features = {k: [] for k in feature_names}
@@ -562,6 +563,14 @@ if __name__ == '__main__':
                                            bvp_feature_names,
                                            folds=folds)
 
+    for panas in np.arange(-1, 1.1, 0.1):
+        ap_train_all = train_fresh_models(all_data, panas, 0,
+                                           f'AP Task All Data {panas:.1f}',
+                                           ap_train_all,
+                                           top_training_features,
+                                           bvp_feature_names + eda_feature_names + acc_feature_names + hrv_feature_names,
+                                           folds=folds)
+
     # Prepare and save results
     int_train_all_data.to_excel(os.path.join('results', 'Int All Data.xlsx'))
     int_train_remove_acc.to_excel(os.path.join('results', 'Int Remove ACC.xlsx'))
@@ -569,6 +578,7 @@ if __name__ == '__main__':
     int_train_hrv.to_excel(os.path.join('results', 'Int HRV.xlsx'))
     int_train_acc.to_excel(os.path.join('results', 'Int ACC.xlsx'))
     int_train_bvp.to_excel(os.path.join('results', 'Int BVP.xlsx'))
+    ap_train_all.to_excel(os.path.join('results', 'AP All Data.xlsx'))
 
     generate_figures(int_train_all_data, os.path.join('figures', 'Int_All_Data.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, All Data")
@@ -582,6 +592,8 @@ if __name__ == '__main__':
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only ACC")
     generate_figures(int_train_bvp, os.path.join('figures', 'Int_BVP.png'),
                      "Metric Variance with Tuned PANAS Threshold on Control vs. Condition, Only BVP")
+    generate_figures(ap_train_all, os.path.join('figures', 'AP_All.png'),
+                     "Metric Variance with Tuned PANAS Threshold on Postcondition, All Data")
 
     # Record script time
     seconds = time.time() - start
